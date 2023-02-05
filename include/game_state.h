@@ -14,6 +14,8 @@ namespace weechess {
         bool can_castle_kingside;
         bool can_castle_queensize;
 
+        bool has_rights() const;
+
         static CastleRights none();
         static CastleRights all();
     };
@@ -21,7 +23,11 @@ namespace weechess {
     class GameState {
     public:
         GameState();
-        GameState(Board board, Color turn_to_move, PlayerState<CastleRights> castle_rights);
+        GameState(
+            Board board,
+            Color turn_to_move,
+            PlayerState<CastleRights> castle_rights,
+            std::optional<Location> en_passant_target);
 
         std::string to_fen() const;
 
@@ -32,6 +38,7 @@ namespace weechess {
         Color m_turn_to_move;
 
         PlayerState<CastleRights> m_castle_rights;
+        std::optional<Location> m_en_passant_target;
     };
 
 }

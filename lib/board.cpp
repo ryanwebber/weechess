@@ -5,12 +5,19 @@ namespace weechess {
     Location::Location(uint8_t offset)
         : offset(offset) {}
 
-    uint8_t Location::file() {
+    Location::Location(uint8_t file, uint8_t rank)
+        : offset(file + rank * 8) {}
+
+    uint8_t Location::file() const {
         return offset % 8;
     }
 
-    uint8_t Location::rank() {
+    uint8_t Location::rank() const {
         return offset / 8;
+    }
+
+    std::string Location::to_string() const {
+        return std::string(1, 'a' + file()) + std::to_string(rank() + 1);
     }
 
     std::optional<Location> Location::offset_by(int8_t offset) {
@@ -22,7 +29,7 @@ namespace weechess {
     }
 
     Board::Board() = default;
-    Board::Board(std::array<Piece, cell_count> cells)
+    Board::Board(Buffer cells)
         : m_cells(cells) {}
 
     Piece Board::piece_at(Location location) const {

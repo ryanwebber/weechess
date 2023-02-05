@@ -32,13 +32,9 @@ namespace weechess {
             return is(PieceType::None);
         }
 
-        std::optional<char> to_fen() const;
-
         static Piece none() {
             return Piece();
         }
-
-        static std::optional<Piece> from_fen(char);
     };
 
 }

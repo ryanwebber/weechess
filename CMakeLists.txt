@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.6)
 project(Weechess VERSION 0.1.0)
 
+include(CTest)
+
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "Preventing an in-tree built.")
 endif()
@@ -57,3 +59,9 @@ target_include_directories(${CLI_TARGET}
         PRIVATE
             "include"
         )
+
+#
+# Tests
+#
+
+add_test(NAME SanityCheck COMMAND ${CLI_TARGET} --h)
