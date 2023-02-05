@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -24,18 +26,14 @@ namespace weechess {
         static constexpr size_t cell_count = 64;
 
         Board();
-        Board(Piece cells[64]);
+        Board(std::array<Piece, cell_count>);
 
         Piece piece_at(Location location) const;
         Piece set_piece_at(Location location, Piece piece);
 
-        std::string to_fen() const;
-
-        static std::optional<Board> from_fen(std::string_view);
-        static Board default_board();
+        std::span<const Piece> cells() const;
 
     private:
-        Piece cells[cell_count];
+        std::array<Piece, cell_count> m_cells;
     };
-
 }

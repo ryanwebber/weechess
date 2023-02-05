@@ -1,12 +1,12 @@
 #include <iostream>
 
-#include "board.h"
+#include "game_state.h"
 
 using namespace weechess;
 
 int main(int argc, char *argv[]) {
-    auto board = Board::default_board();
-    std::cout << board.to_fen() << std::endl;
+    auto gamestate = GameState::new_game();
+    std::cout << gamestate.to_fen() << std::endl;
 
     return 0;
 }
