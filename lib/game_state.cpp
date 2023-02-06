@@ -71,6 +71,10 @@ namespace weechess {
         return GameState::from_fen(default_fen).value();
     }
 
+    const Board& GameState::board() const {
+        return m_board;
+    }
+
     std::string GameState::to_fen() const {
 
         auto cells = m_board.cells();

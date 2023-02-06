@@ -28,6 +28,25 @@ namespace weechess {
         return Location(offset);
     }
 
+    Location Location::from_rank_and_file(uint8_t rank, uint8_t file) {
+        return Location(file, rank);
+    }
+
+    std::optional<Location> Location::from_name(std::string_view name) {
+        if (name.size() != 2) {
+            return std::nullopt;
+        }
+
+        uint8_t file = name[0] - 'a';
+        uint8_t rank = name[1] - '1';
+
+        if (file > 7 || rank > 7) {
+            return std::nullopt;
+        }
+
+        return Location(file, rank);
+    }
+
     Board::Board() = default;
     Board::Board(Buffer cells)
         : m_cells(cells) {}
@@ -40,6 +59,10 @@ namespace weechess {
         Piece old_piece = Piece(m_cells[location.offset]);
         m_cells[location.offset] = piece;
         return old_piece;
+    }
+
+    Color Board::color_at(Location location) const {
+        return (location.file() + location.rank()) % 2 == 0 ? Color::White : Color::Black;
     }
 
     std::span<const Piece> Board::cells() const {

@@ -29,6 +29,8 @@ namespace weechess {
             PlayerState<CastleRights> castle_rights,
             std::optional<Location> en_passant_target);
 
+        const Board& board() const;
+
         std::string to_fen() const;
 
         static std::optional<GameState> from_fen(std::string_view);

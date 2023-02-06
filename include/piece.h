@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 
 namespace weechess {
 
@@ -31,6 +32,8 @@ namespace weechess {
         bool exists() const {
             return is(PieceType::None);
         }
+
+        std::string to_symbol() const;
 
         static Piece none() {
             return Piece();

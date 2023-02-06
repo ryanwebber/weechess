@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.6)
 project(Weechess VERSION 0.1.0)
 
+include(FetchContent)
 include(CTest)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -47,6 +48,17 @@ target_compile_features(${LIB_TARGET} PUBLIC cxx_std_20)
 # CLI
 #
 
+FetchContent_Declare(ftxui
+  GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui
+  GIT_TAG v3.0.0
+)
+
+FetchContent_GetProperties(ftxui)
+if(NOT ftxui_POPULATED)
+    FetchContent_Populate(ftxui)
+    add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 set(CLI_TARGET weechess-cli)
 set(CLI_SOURCES
         src/main.cpp
@@ -54,7 +66,14 @@ set(CLI_SOURCES
 
 add_executable(${CLI_TARGET} ${CLI_SOURCES})
 
-target_link_libraries(${CLI_TARGET} PRIVATE ${LIB_TARGET})
+target_link_libraries(${CLI_TARGET}
+    PRIVATE
+        ${LIB_TARGET}
+        ftxui::screen
+        ftxui::dom
+        ftxui::component
+        )
+
 target_include_directories(${CLI_TARGET}
         PRIVATE
             "include"

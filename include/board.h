@@ -22,6 +22,9 @@ namespace weechess {
         std::string to_string() const;
 
         std::optional<Location> offset_by(int8_t offset);
+
+        static Location from_rank_and_file(uint8_t rank, uint8_t file);
+        static std::optional<Location> from_name(std::string_view);
     };
 
     class Board {
@@ -34,6 +37,8 @@ namespace weechess {
 
         Piece piece_at(Location location) const;
         Piece set_piece_at(Location location, Piece piece);
+
+        Color color_at(Location location) const;
 
         std::span<const Piece> cells() const;
 
