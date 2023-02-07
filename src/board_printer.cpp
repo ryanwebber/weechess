@@ -1,4 +1,4 @@
-#include "board_utils.h"
+#include "board_printer.h"
 
 #include <iostream>
 
@@ -10,7 +10,7 @@ struct Vec2Int {
     int y;
 };
 
-static const char16_t* board_template = 
+static const char16_t board_template[] = 
     u"╭───┬───┬───┬───┬───┬───┬───┬───╮"
     u"│   │   │   │   │   │   │   │   │"
     u"├───┼───┼───┼───┼───┼───┼───┼───┤"
@@ -28,7 +28,13 @@ static const char16_t* board_template =
     u"├───┼───┼───┼───┼───┼───┼───┼───┤"
     u"│   │   │   │   │   │   │   │   │"
     u"╰───┴───┴───┴───┴───┴───┴───┴───╯"
-;
+    ;
+
+static const char16_t cell_template[] =
+    u"╭───╮"
+    u"│   │"
+    u"╰───╯"
+    ;
 
 static const std::vector<Vec2Int> offsets = {
     Vec2Int {  0, -1 },
@@ -51,7 +57,7 @@ void draw_box(
     weechess::Piece piece,
     BoardRender::Decoration decoration)
 {
-    auto symbol = !piece.exists() && decoration != BoardRender::Decoration::None ? u'•' : piece.to_symbol();
+    auto symbol = !piece.exists() && decoration != BoardRender::Decoration::None ? u'·' : piece.to_symbol();
 
     // Middle cell
     cells[offset.y][offset.x] = BoardRender::Cell {
@@ -67,14 +73,17 @@ void draw_box(
             continue;
         }
 
-        cells[row][col] = BoardRender::Cell {
-            board_template[row * col_char_count + col],
-            BoardRender::Decoration::None,
-        };
+        auto symbol = decoration == BoardRender::Decoration::Selected ?
+            cell_template[(l.y + 1) * 5 + (2 + l.x)] :
+            board_template[row * col_char_count + col];
+
+        cells[row][col] = BoardRender::Cell { symbol, decoration };
     }
 }
 
-BoardRender BoardRender::from(const weechess::Board& board, std::optional<weechess::Location> selected_location) {
+BoardRender BoardPrinter::print(const weechess::Board& board, std::optional<weechess::Location> selected_location) const {
+    using Cell = BoardRender::Cell;
+    using Decoration = BoardRender::Decoration;
 
     std::vector<std::vector<Cell>> cells;
     

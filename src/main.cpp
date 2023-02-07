@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     
     AppController controller;
     controller.update_state([&](auto &state) {
-        state.board = gamestate.board();
+        state.game_state = gamestate;
         return true;
     });
 

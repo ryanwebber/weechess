@@ -20,6 +20,10 @@ struct BoardRender {
     std::vector<std::vector<Cell>> cells;
     size_t width;
     size_t height;
+};
 
-    static BoardRender from(const weechess::Board& board, std::optional<weechess::Location> selected_location);
+class BoardPrinter {
+public:
+    BoardPrinter() = default;
+    BoardRender print(const weechess::Board& board, std::optional<weechess::Location> selected_location) const;
 };

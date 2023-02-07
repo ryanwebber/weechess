@@ -3,7 +3,7 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/table.hpp>
 
-#include "../board_utils.h"
+#include "../board_printer.h"
 #include "../string_utils.h"
 #include "app_controller.h"
 
@@ -35,22 +35,38 @@ AppController::AppController() {
         // Otherwise handle events per component
         switch (m_view_state.focus) {
             case ViewState::Focus::ChessWindow: {
+
+                // Handle navigation around the board with arrows
                 if (event == ftxui::Event::ArrowLeft) {
-                    if (auto l = m_view_state.selected_location.offset_by(-1, 0))
-                        m_view_state.selected_location = l.value();
+                    if (auto l = m_view_state.highlighted_location.offset_by(-1, 0))
+                        m_view_state.highlighted_location = l.value();
                     return true;
                 } else if (event == ftxui::Event::ArrowRight) {
-                    if (auto l = m_view_state.selected_location.offset_by(1, 0))
-                        m_view_state.selected_location = l.value();
+                    if (auto l = m_view_state.highlighted_location.offset_by(1, 0))
+                        m_view_state.highlighted_location = l.value();
                     return true;
                 } else if (event == ftxui::Event::ArrowUp) {
-                    if (auto l = m_view_state.selected_location.offset_by(0, -1))
-                        m_view_state.selected_location = l.value();
+                    if (auto l = m_view_state.highlighted_location.offset_by(0, -1))
+                        m_view_state.highlighted_location = l.value();
                     return true;
                 } else if (event == ftxui::Event::ArrowDown) {
-                    if (auto l = m_view_state.selected_location.offset_by(0, 1))
-                        m_view_state.selected_location = l.value();
+                    if (auto l = m_view_state.highlighted_location.offset_by(0, 1))
+                        m_view_state.highlighted_location = l.value();
                     return true;
+                }
+
+                // Handle jumping to a specific file or rank on the board
+                if (event.is_character() && event.character().size() > 0) {
+                    auto c = event.character()[0];
+                    if (c > '0' && c <= '8') {
+                        m_view_state.highlighted_location = weechess::Location::from_rank_and_file(
+                            c - '1', m_view_state.highlighted_location.file());
+                        return true;
+                    } else if (c >= 'a' && c <= 'h') {
+                        m_view_state.highlighted_location = weechess::Location::from_rank_and_file(
+                            m_view_state.highlighted_location.rank(), c - 'a');
+                        return true;
+                    }
                 }
             }
             case ViewState::Focus::CommandWindow: {
@@ -126,12 +142,13 @@ ftxui::Component AppController::ViewState::component_in_focus() const {
 ftxui::Element AppController::render() {
     using namespace ftxui;
 
-    std::optional<weechess::Location> selected_location;
+    std::optional<weechess::Location> highlighted_location;
     if (m_view_state.focus == ViewState::Focus::ChessWindow) {
-        selected_location = m_view_state.selected_location;
+        highlighted_location = m_view_state.highlighted_location;
     }
 
-    auto board_render = BoardRender::from(m_state.board, selected_location);
+    BoardPrinter bp;
+    auto board_render = bp.print(m_state.game_state.board(), highlighted_location);
 
     std::vector<Element> board_rows;
     for (const auto &row : board_render.cells) {

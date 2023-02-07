@@ -5,12 +5,13 @@
 #include <ftxui/component/component.hpp>
 
 #include "board.h"
+#include "game_state.h"
 
 class AppController {
     public:
 
         struct State {
-            weechess::Board board;
+            weechess::GameState game_state;
             std::vector<char> move_history;
         };
 
@@ -51,8 +52,14 @@ class AppController {
             };
 
             Focus focus;
+
+            // Command window stuff
             CommandInput command_input;
-            weechess::Location selected_location { 0 };
+
+            // Chess board stuff
+            weechess::Location highlighted_location { 0 };
+            std::optional<weechess::Location> selected_location { };
+            std::string navigation_buffer;
 
             ftxui::Component component_in_focus() const;
 

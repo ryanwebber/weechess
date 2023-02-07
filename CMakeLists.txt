@@ -62,7 +62,7 @@ endif()
 set(CLI_TARGET weechess-cli)
 set(CLI_SOURCES
         src/application/app_controller.cpp
-        src/board_utils.cpp
+        src/board_printer.cpp
         src/main.cpp
         src/string_utils.cpp
         )
