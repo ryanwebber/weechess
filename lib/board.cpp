@@ -21,11 +21,22 @@ namespace weechess {
     }
 
     std::optional<Location> Location::offset_by(int8_t offset) {
-        if (offset > 63) {
+        if (offset >= Board::cell_count) {
             return std::nullopt;
         }
 
         return Location(offset);
+    }
+
+    std::optional<Location> Location::offset_by(int8_t file_offset, int8_t rank_offset) {
+        int8_t file = file_offset + this->file();
+        int8_t rank = rank_offset + this->rank();
+
+        if (file < 0 || file > 7 || rank < 0 || rank > 7) {
+            return std::nullopt;
+        }
+
+        return Location(file, rank);
     }
 
     Location Location::from_rank_and_file(uint8_t rank, uint8_t file) {
@@ -52,11 +63,11 @@ namespace weechess {
         : m_cells(cells) {}
 
     Piece Board::piece_at(Location location) const {
-        return Piece(m_cells[location.offset]);
+        return m_cells[location.offset];
     }
 
     Piece Board::set_piece_at(Location location, Piece piece) {
-        Piece old_piece = Piece(m_cells[location.offset]);
+        Piece old_piece(m_cells[location.offset]);
         m_cells[location.offset] = piece;
         return old_piece;
     }

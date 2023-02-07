@@ -30,10 +30,10 @@ namespace weechess {
         bool is(Color color) const;
 
         bool exists() const {
-            return is(PieceType::None);
+            return (representation & 0b111111) != 0;
         }
 
-        std::string to_symbol() const;
+        char16_t to_symbol() const;
 
         static Piece none() {
             return Piece();

@@ -64,6 +64,7 @@ set(CLI_SOURCES
         src/application/app_controller.cpp
         src/board_utils.cpp
         src/main.cpp
+        src/string_utils.cpp
         )
 
 add_executable(${CLI_TARGET} ${CLI_SOURCES})

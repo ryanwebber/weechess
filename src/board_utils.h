@@ -1,15 +1,25 @@
 #pragma once
 
-#include <sstream>
+#include <optional>
 #include <vector>
 
 #include "board.h"
 
 
 struct BoardRender {
-    std::vector<std::string> lines;
+    enum Decoration {
+        None,
+        Selected,
+    };
+
+    struct Cell {
+        char16_t symbol;
+        Decoration decoration;
+    };
+
+    std::vector<std::vector<Cell>> cells;
     size_t width;
     size_t height;
 
-    static BoardRender from(const weechess::Board& board);
+    static BoardRender from(const weechess::Board& board, std::optional<weechess::Location> selected_location);
 };

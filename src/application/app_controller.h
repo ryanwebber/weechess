@@ -38,6 +38,7 @@ class AppController {
         public:
             CommandInput();
 
+            std::string& text();
             const std::string& text() const;
             const ftxui::Component& renderer() const;
         };
@@ -51,6 +52,11 @@ class AppController {
 
             Focus focus;
             CommandInput command_input;
+            weechess::Location selected_location { 0 };
+
+            ftxui::Component component_in_focus() const;
+
+            ViewState();
         };
 
         State m_state;
