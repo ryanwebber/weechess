@@ -61,6 +61,8 @@ endif()
 
 set(CLI_TARGET weechess-cli)
 set(CLI_SOURCES
+        src/application/app_controller.cpp
+        src/board_utils.cpp
         src/main.cpp
         )
 
