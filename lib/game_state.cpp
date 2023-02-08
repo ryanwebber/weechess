@@ -82,7 +82,38 @@ namespace weechess {
     const Board& GameState::board() const {
         return m_board;
     }
-    
+
+    std::optional<GameState> GameState::by_performing_move(const GameState &game_state, const Move &move, MoveDetail*) {
+        if (!game_state.board().piece_at(move.origin).is(game_state.turn_to_move())) {
+            return { };
+        }
+
+        if (!game_state.board().piece_at(move.origin).exists()) {
+            return { };
+        }
+
+        if (!game_state.is_legal_move(move)) {
+            return { };
+        }
+
+        // TODO: This is does not account for:
+        //  * Castle rights
+        //  * Castling
+        //  * En passant
+        //  * Promotion
+
+        Board board(game_state.board());
+        board.set_piece_at(move.destination, board.piece_at(move.origin));
+        board.set_piece_at(move.origin, Piece::none());
+
+        return GameState {
+            board,
+            invert_color(game_state.turn_to_move()),
+            game_state.castle_rights(),
+            { }
+        };
+    }
+
     std::span<const Move> GameState::LazyLegalMoves::get_or_compute(const GameState& game_state) {
         if (!m_legal_moves.has_value()) {
             m_legal_moves = generate_legal_moves(game_state);

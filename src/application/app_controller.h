@@ -10,15 +10,32 @@
 class AppController {
     public:
 
+        struct PastMove {
+            weechess::Piece piece;
+            weechess::Location location;
+        };
+
+        struct CommandOutput {
+            enum class Type {
+                Command,
+                Error,
+                Info,
+            };
+
+            std::string text;
+            Type type;
+        };
+
         struct State {
             weechess::GameState game_state;
-            std::vector<char> move_history;
+            std::vector<PastMove> move_history;
+            std::vector<CommandOutput> command_output;
         };
 
         class Delegate {
             public:
-                virtual void on_should_redraw() = 0;
-                virtual void on_execute_command(std::string_view command) = 0;
+                virtual void on_should_redraw(AppController&) = 0;
+                virtual void on_execute_command(AppController&, std::string_view command) = 0;
         };
 
         AppController();

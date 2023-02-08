@@ -73,8 +73,9 @@ AppController::AppController() {
                 if (event == ftxui::Event::Return) {
                     auto &command_text = m_view_state.command_input.text();
                     if (command_text.size() > 0) {
+                        m_state.command_output.push_back({ "> " + command_text, CommandOutput::Type::Command });
                         if (auto delegate = m_delegate.lock()) {
-                            delegate->on_execute_command(command_text);
+                            delegate->on_execute_command(*this, command_text);
                         }
 
                         command_text.clear();
@@ -102,10 +103,12 @@ void AppController::update_state(std::function<bool(State&)> fn) {
 
     if (is_dirty) {
         if (auto delegate = m_delegate.lock()) {
-            delegate->on_should_redraw();
+            delegate->on_should_redraw(*this);
         }
     }
 }
+
+
 
 static const std::string rank_labels =   " 1 2 3 4 5 6 7 8 ";
 static const std::string file_labels =   "  A   B   C   D   E   F   G   H  ";
@@ -187,20 +190,32 @@ ftxui::Element AppController::render() {
         return to_string(piece.to_symbol()) + " → " + location.to_string();
     };
 
-    std::vector<std::vector<std::string>> history;
-    constexpr size_t max_history = 16;
-    for (auto i = 0; i < max_history; i++) {
-        history.push_back({
-            std::to_string(i),
-            format_move(weechess::Piece(weechess::Piece::Type::Pawn, weechess::Color::White), weechess::Location::from_name("e3").value()),
-            format_move(weechess::Piece(weechess::Piece::Type::Pawn, weechess::Color::Black), weechess::Location::from_name("d5").value()),
-        });
+    std::vector<std::vector<std::string>> history { };
+    
+    {
+        constexpr size_t max_history = 16;
+        size_t i_start = m_state.move_history.size() > max_history ?
+            m_state.move_history.size() - max_history : 0;
+
+        // Offset to even numbers properly
+        i_start = ((i_start+1) / 2) * 2;
+
+        for (auto i = i_start; i < i_start + max_history; i += 2)
+        {
+            auto s1 = i < m_state.move_history.size() ?
+                format_move(m_state.move_history[i].piece, m_state.move_history[i].location) : "      ";
+
+            auto s2 = (i + 1) < m_state.move_history.size() ?
+                format_move(m_state.move_history[i + 1].piece, m_state.move_history[i + 1].location) : "      ";
+
+            history.push_back({ std::to_string(i/2 + 1), s1, s2, });
+        }
     }
 
     auto table = Table(std::move(history));
 
     table.SelectColumn(0).Decorate(dim);
-    table.SelectColumn(0).Decorate(center);
+    table.SelectColumn(0).Decorate(hcenter);
     table.SelectColumn(0).Decorate(flex);
     table.SelectColumn(1).Decorate(flex);
     table.SelectColumn(2).Decorate(flex);
@@ -212,6 +227,23 @@ ftxui::Element AppController::render() {
 
     auto prompt_decoration = m_view_state.focus == AppController::ViewState::Focus::CommandWindow ? color(Color::Yellow) : dim;
 
+    std::vector<Element> command_history;
+    for (const auto& output : m_state.command_output) {
+        auto p = paragraph(output.text);
+        switch (output.type) {
+            case CommandOutput::Type::Info:
+                p |= dim;
+                break;
+            case CommandOutput::Type::Error:
+                p |= color(Color::Red);
+                break;
+            default:
+                break;
+        }
+
+        command_history.push_back(p);
+    }
+
     auto document = vbox({
         hbox({
             vtext(rank_labels) | hcenter | size(WIDTH, EQUAL, 3) | dim,
@@ -220,17 +252,17 @@ ftxui::Element AppController::render() {
                 text(file_labels) | hcenter | dim,
             }),
             filler() | size(WIDTH, EQUAL, 2),
-            window(text("History"), table.Render() | size(WIDTH, EQUAL, 24)),
-            window(text("Logs"), text("")) | flex,
+            window(text("History") | hcenter, table.Render() | size(WIDTH, EQUAL, 23)),
+            window(text("Logs") | hcenter, text("")) | flex,
         }),
         vbox({
             vbox({
-                /* Command history */
-            }) | flex,
+                command_history
+            }) | focusPositionRelative(0, 1) | yframe | flex,
             hbox({
                 /* Command input */
                 text("> ") | prompt_decoration,
-                command_input | flex | focus,
+                command_input | flex,
             }),
         }) | flex | border
     });

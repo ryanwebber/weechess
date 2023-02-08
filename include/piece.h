@@ -41,4 +41,5 @@ namespace weechess {
         }
     };
 
+    Color invert_color(Color);
 }

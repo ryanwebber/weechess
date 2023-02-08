@@ -34,4 +34,12 @@ namespace weechess {
             return ' ';
         }
     }
+
+    Color invert_color(Color color) {
+        if (color == Color::White) {
+            return Color::Black;
+        } else {
+            return Color::White;
+        }
+    }
 }
