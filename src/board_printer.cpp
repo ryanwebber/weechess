@@ -57,7 +57,21 @@ void draw_box(
     weechess::Piece piece,
     BoardRender::Decoration decoration)
 {
-    auto symbol = !piece.exists() && decoration != BoardRender::Decoration::None ? u'·' : piece.to_symbol();
+    // Figure out which symbol we want if there is no piece
+    // at that location
+    char16_t symbol = piece.to_symbol();
+    if (!piece.exists()) {
+        switch (decoration) {
+            case BoardRender::Decoration::Selected:
+                symbol = u'·';
+                break;
+            case BoardRender::Decoration::Highlighted:
+                symbol = u'◆'; // u'⬩';
+                break;
+            default:
+                break;
+        }
+    }
 
     // Middle cell
     cells[offset.y][offset.x] = BoardRender::Cell {
@@ -77,11 +91,18 @@ void draw_box(
             cell_template[(l.y + 1) * 5 + (2 + l.x)] :
             board_template[row * col_char_count + col];
 
-        cells[row][col] = BoardRender::Cell { symbol, decoration };
+        auto border_decoration = decoration == BoardRender::Decoration::Selected ?
+            BoardRender::Decoration::Selected : BoardRender::Decoration::None;
+
+        cells[row][col] = BoardRender::Cell { symbol, border_decoration };
     }
 }
 
-BoardRender BoardPrinter::print(const weechess::Board& board, std::optional<weechess::Location> selected_location) const {
+BoardRender BoardPrinter::print(
+    const weechess::Board& board,
+    std::optional<weechess::Location> selected_location,
+    std::span<const weechess::Location> highlighted_locations
+) const {
     using Cell = BoardRender::Cell;
     using Decoration = BoardRender::Decoration;
 
@@ -95,7 +116,7 @@ BoardRender BoardPrinter::print(const weechess::Board& board, std::optional<weec
         return 2 + file * 4;
     };
 
-    // Fill up with spaces
+    // Fill up the whole board with spaces
     for (auto r = 0; r < row_char_count; r++) {
         cells.push_back(std::vector<Cell>());
         for (auto c = 0; c < col_char_count; c++) {
@@ -103,7 +124,8 @@ BoardRender BoardPrinter::print(const weechess::Board& board, std::optional<weec
         }
     }
 
-    // Draw each square individually, because it's more simple
+    // Draw each cells individually. This is a bit inefficient because of the overlap
+    // between adjacent cells
     for (auto i = 0; i < weechess::Board::cell_count; i++) {
         weechess::Location location(i);
         auto row = rank_to_row(location.rank());
@@ -111,6 +133,14 @@ BoardRender BoardPrinter::print(const weechess::Board& board, std::optional<weec
         draw_box(cells, { col, row }, board.piece_at(location), Decoration::None);
     }
 
+    // Draw highlighted cells
+    for (const auto &loc : highlighted_locations) {
+        auto row = rank_to_row(loc.rank());
+        auto col = file_to_col(loc.file());
+        draw_box(cells, { col, row }, board.piece_at(loc), Decoration::Highlighted);
+    }
+
+    // Finally, draw the selected cell, because it's border is different
     if (selected_location.has_value()) {
         auto row = rank_to_row(selected_location->rank());
         auto col = file_to_col(selected_location->file());

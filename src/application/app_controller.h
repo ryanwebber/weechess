@@ -59,7 +59,6 @@ class AppController {
             // Chess board stuff
             weechess::Location highlighted_location { 0 };
             std::optional<weechess::Location> selected_location { };
-            std::string navigation_buffer;
 
             ftxui::Component component_in_focus() const;
 

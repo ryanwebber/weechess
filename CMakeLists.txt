@@ -29,7 +29,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 set(LIB_TARGET weechess)
 set(LIB_SOURCES
         lib/board.cpp
+        lib/fen.cpp
         lib/game_state.cpp
+        lib/location.cpp
         lib/piece.cpp
         )
 

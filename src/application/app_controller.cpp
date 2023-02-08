@@ -147,8 +147,19 @@ ftxui::Element AppController::render() {
         highlighted_location = m_view_state.highlighted_location;
     }
 
+    std::vector<weechess::Location> hinted_locations;
+    for (const auto& m : m_state.game_state.legal_moves()) {
+        if (m.origin == m_view_state.highlighted_location) {
+            hinted_locations.push_back(m.destination);
+        }
+    }
+
     BoardPrinter bp;
-    auto board_render = bp.print(m_state.game_state.board(), highlighted_location);
+    auto board_render = bp.print(
+        m_state.game_state.board(),
+        highlighted_location,
+        hinted_locations
+        );
 
     std::vector<Element> board_rows;
     for (const auto &row : board_render.cells) {
@@ -158,6 +169,9 @@ ftxui::Element AppController::render() {
             switch (cell.decoration) {
                 case BoardRender::Decoration::Selected:
                     cell_elem |= color(Color::Yellow);
+                    break;
+                case BoardRender::Decoration::Highlighted:
+                    cell_elem |= color(Color::Cyan);
                     break;
                 default:
                     break;
@@ -178,8 +192,8 @@ ftxui::Element AppController::render() {
     for (auto i = 0; i < max_history; i++) {
         history.push_back({
             std::to_string(i),
-            format_move(weechess::Piece(weechess::PieceType::Pawn, weechess::Color::White), weechess::Location::from_name("e3").value()),
-            format_move(weechess::Piece(weechess::PieceType::Pawn, weechess::Color::Black), weechess::Location::from_name("d5").value()),
+            format_move(weechess::Piece(weechess::Piece::Type::Pawn, weechess::Color::White), weechess::Location::from_name("e3").value()),
+            format_move(weechess::Piece(weechess::Piece::Type::Pawn, weechess::Color::Black), weechess::Location::from_name("d5").value()),
         });
     }
 
