@@ -1,5 +1,82 @@
 #include "console.h"
 
+void with_help(argparse::ArgumentParser& parser) {
+    parser.add_argument("--help")
+        .default_value(false)
+        .implicit_value(true);
+}
+
+class HelpCommand : public Console::Command {
+    public:
+        HelpCommand()
+            : Command("help", {}, [](auto &parser) {
+                parser.add_description("Print the available commands");
+            })
+        {}
+
+        void execute(const Console &console, argparse::ArgumentParser) const override {
+            console.print_usage();
+        }
+};
+
+class ExitCommand : public Console::Command {
+    public:
+        ExitCommand() 
+            : Command("exit", {}, [](auto &parser) {
+                with_help(parser);
+                parser.add_description("Exit the application");
+            })
+        {}
+
+        void execute(const Console &console, argparse::ArgumentParser) const override {
+            if (auto display = console.display().lock()) {
+                display->exit();
+            }
+        }
+};
+
+class MoveCommand : public Console::Command {
+    public:
+        MoveCommand()
+            : Command("move", {}, [](auto &parser) {
+                with_help(parser);
+                parser.add_description("Make a move on the board");
+                parser.add_argument("from").help("The piece to move, by its location in standard notation");
+                parser.add_argument("to").help("The location to move to, in standard notation");
+            })
+        {}
+
+        void execute(const Console &console, argparse::ArgumentParser parser) const override {
+            auto service = console.service().lock();
+
+            if (auto service = console.service().lock()) {
+                auto origin_sn = parser.get<std::string>("from");
+                auto destination_sn = parser.get<std::string>("to");
+
+                auto origin = weechess::Location::from_name(origin_sn);
+                auto destination = weechess::Location::from_name(destination_sn);
+
+                if (!origin) {
+                    if (auto display = console.display().lock()) {
+                        display->write_stderr("Invalid location: " + origin_sn);
+                    }
+                    return;
+                }
+
+                if (!destination) {
+                    if (auto display = console.display().lock()) {
+                        display->write_stderr("Invalid location: " + destination_sn);
+                    }
+                    return;
+                }
+
+                if (auto display = console.display().lock()) {
+                    display->write_stdout(origin_sn + " → " + destination_sn);
+                }
+            }
+        }
+};
+
 std::vector<std::string> tokenize(std::string_view str) {
     std::vector<std::string> tokens;
     std::string token;
@@ -19,14 +96,22 @@ std::vector<std::string> tokenize(std::string_view str) {
     return tokens;
 }
 
-Console::Console(std::weak_ptr<Display> display, std::weak_ptr<Service> service)
-    : m_display(display)
-    , m_service(service)
-{
+Console::Console() {
+    m_commands.push_back(std::make_unique<HelpCommand>());
+    m_commands.push_back(std::make_unique<ExitCommand>());
+    m_commands.push_back(std::make_unique<MoveCommand>());
+}
+
+std::weak_ptr<Console::Display> Console::display() const {
+    return m_display;
 }
 
 void Console::set_display(std::weak_ptr<Display> display) {
     m_display = display;
+}
+
+std::weak_ptr<Console::Service> Console::service() const {
+    return m_service;
 }
 
 void Console::set_service(std::weak_ptr<Service> service) {
@@ -49,33 +134,17 @@ void Console::execute(std::string_view command) {
         return;
     }
 
-    argparse::ArgumentParser *program = nullptr;
-    for (auto &cmd : m_commands) {
-        for (auto &name : cmd.names) {
-            if (name == tokens[0]) {
-                program = &cmd.parser;
-                break;
-            }
-        }
-    }
+    auto command_itr = std::find_if(m_commands.begin(), m_commands.end(), [&](auto &cmd) {
+        return std::find(cmd->names().begin(), cmd->names().end(), tokens[0]) != cmd->names().end();
+    });
 
-    if (program == nullptr) {
+    if (command_itr == m_commands.end()) {
         display->write_stderr("Unknown command: " + tokens[0]);
         print_usage();
         return;
     }
 
-    display->write_stdout("Executing command: " + tokens[0]);
-
-    try {
-        program->parse_args(tokens);
-    } catch (const std::runtime_error& err) {
-        display->write_stderr(err.what());
-        display->write_stdout(program->usage());
-        return;
-    }
-
-
+    (*command_itr)->execute(*this, tokens);
 }
 
 void Console::print_usage() const {
@@ -84,11 +153,12 @@ void Console::print_usage() const {
         display->write_stdout("Commands:");
         for (auto &cmd : m_commands) {
             std::string command_listing;
-            if (!cmd.names.empty()) {
-                command_listing += cmd.names[0];
+            auto names = cmd->names();
+            if (!names.empty()) {
+                command_listing += names[0];
 
-                for (size_t i = 1; i < cmd.names.size(); ++i) {
-                    command_listing += ", " + cmd.names[i];
+                for (const auto &name : names.subspan(1)) {
+                    command_listing += ", " + name;
                 }
             }
 
@@ -96,7 +166,7 @@ void Console::print_usage() const {
                 command_listing += std::string(column_size - command_listing.size(), ' ');
             }
 
-            command_listing += cmd.parser.description();
+            command_listing += cmd->description();
 
             display->write_stdout("    " + command_listing);
         }
@@ -104,29 +174,73 @@ void Console::print_usage() const {
 }
 
 void Console::initialize() {
-    if (!m_commands.empty()) {
+    // if (!m_commands.empty()) {
+    //     return;
+    // }
+
+    // // Help command
+    // argparse::ArgumentParser cmd_help_parser("help", "1.0", argparse::default_arguments::none);
+    // cmd_help_parser.add_description("Print the available commands");
+    // m_commands.push_back({ { "help" }, cmd_help_parser });
+
+    // // Exit command
+    // argparse::ArgumentParser cmd_exit_parser("exit", "1.0", argparse::default_arguments::none);
+    // cmd_exit_parser.add_description("Exit the game");
+    // cmd_exit_parser.add_argument("--help")
+    //     .default_value(false)
+    //     .implicit_value(true);
+    // m_commands.push_back({ { "exit" }, cmd_exit_parser });
+
+    // // Move command
+    // argparse::ArgumentParser cmd_move_parser("move", "1.0", argparse::default_arguments::none);
+    // cmd_move_parser.add_argument("--help")
+    //     .default_value(false)
+    //     .implicit_value(true);
+
+    // cmd_move_parser.add_description("Make a move on the board");
+    // m_commands.push_back({ { "move", "m" }, cmd_move_parser });
+}
+
+std::vector<std::string> form_names(std::string name, std::vector<std::string> aliases) {
+    aliases.insert(aliases.begin(), name);
+    return aliases;
+}
+
+Console::Command::Command(std::string name, std::vector<std::string> aliases, std::function<void(argparse::ArgumentParser &)> builder)
+    : m_names(form_names(name, aliases))
+    , m_parser(name, "1.0", argparse::default_arguments::none)
+{
+    builder(m_parser);
+}
+
+std::span<const std::string> Console::Command::names() const {
+    return m_names;
+}
+
+std::string_view Console::Command::description() const {
+    return m_parser.description();
+}
+
+void Console::Command::execute(const Console &console, std::vector<std::string> args) const {
+    argparse::ArgumentParser parser(m_parser);
+    try {
+        parser.parse_args(args);
+    } catch (const std::runtime_error& err) {
+        if (auto display = console.display().lock()) {
+            display->write_stderr(err.what());
+            display->write_stdout(parser.help().str());
+        }
+
         return;
     }
 
-    // Help command
-    argparse::ArgumentParser cmd_help_parser("help", "1.0", argparse::default_arguments::none);
-    cmd_help_parser.add_description("Print the available commands");
-    m_commands.push_back({ { "help" }, cmd_help_parser });
+    if (parser.is_configured("--help") && parser.present("--help")) {
+        if (auto display = console.display().lock()) {
+            display->write_stdout(parser.usage());
+        }
+        
+        return;
+    }
 
-    // Exit command
-    argparse::ArgumentParser cmd_exit_parser("exit", "1.0", argparse::default_arguments::none);
-    cmd_exit_parser.add_description("Exit the game");
-    cmd_exit_parser.add_argument("--help")
-        .default_value(false)
-        .implicit_value(true);
-    m_commands.push_back({ { "exit" }, cmd_exit_parser });
-
-    // Move command
-    argparse::ArgumentParser cmd_move_parser("move", "1.0", argparse::default_arguments::none);
-    cmd_move_parser.add_argument("--help")
-        .default_value(false)
-        .implicit_value(true);
-
-    cmd_move_parser.add_description("Make a move on the board");
-    m_commands.push_back({ { "move", "m" }, cmd_move_parser });
+    this->execute(console, std::move(parser));
 }

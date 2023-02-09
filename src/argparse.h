@@ -1277,6 +1277,12 @@ public:
     return m_subparser_used.at(subcommand_name);
   }
 
+  /* Getter that returns true if the option was configured in the parser
+  */
+  auto is_configured(std::string_view arg_name) const {
+    return m_argument_map.find(arg_name) != m_argument_map.end();
+  }
+
   /* Getter that returns true if a subcommand is used.
    */
   auto is_subcommand_used(const ArgumentParser &subparser) const {
