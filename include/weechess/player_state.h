@@ -1,6 +1,6 @@
 #pragma once
 
-#include "piece.h"
+#include <weechess/piece.h>
 
 namespace weechess {
 

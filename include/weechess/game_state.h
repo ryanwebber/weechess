@@ -6,10 +6,10 @@
 #include <string_view>
 #include <vector>
 
-#include "board.h"
-#include "move.h"
-#include "piece.h"
-#include "player_state.h"
+#include <weechess/board.h>
+#include <weechess/move.h>
+#include <weechess/piece.h>
+#include <weechess/player_state.h>
 
 namespace weechess {
 

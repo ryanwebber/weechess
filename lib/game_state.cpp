@@ -1,5 +1,5 @@
+#include <weechess/game_state.h>
 #include "fen.h"
-#include "game_state.h"
 
 namespace weechess {
 

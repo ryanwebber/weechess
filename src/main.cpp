@@ -6,120 +6,87 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/screen/screen.hpp>
 
+#include <weechess/game_state.h>
+
 #include "application/app_controller.h"
-#include "arg_parser.h"
-#include "game_state.h"
+#include "console.h"
 
-class AppDelegate: public AppController::Delegate {
+class AppDelegate:
+    public AppController::Delegate,
+    public Console::Display,
+    public Console::Service,
+    public std::enable_shared_from_this<AppDelegate>
+{
     private:
-        struct Command {
-            std::string command_name;
-            union {
-                struct {
-                    bool show_help;
-                } move;
-            } command;
-        };
+        Console m_console;
+        AppController& m_controller;
+        std::function<void()> m_exit_closure;
 
-        argparse::Parser<Command> m_cmd_parser;
-
-        std::vector<std::string> tokenize(std::string_view &sv) {
-            std::stringstream ss((std::string(sv)));
-            std::vector<std::string> out;
-            std::string s;
-            while (std::getline(ss, s, ' ')) {
-                out.push_back(s);
-            }
-
-            return out;
-        }
+        AppDelegate(AppController &controller, std::function<void()> exit_closure)
+            : m_controller(controller)
+            , m_exit_closure(exit_closure) {}
 
     public:
-        AppDelegate() : m_cmd_parser("In-game interactive console") {
-            m_cmd_parser.add_command("help", "Show help and exit", [&](auto &parser) {
-            });
-
-            m_cmd_parser.add_command("move", "Move a piece", [&](auto &parser) {
-                parser.add_option({
-                    { "--help", "-h" },
-                    "Show this help message",
-                    [](auto &command, auto &args) {
-                        args = args.subspan(1);
-                        return true;
-                    }
-                });
-
-                parser.set_argument_placeholder({
-                    argparse::Cardinality::Multiple,
-                    { "from", "to" },
-                    [](auto &command, auto &args) {
-                        if (args.size() < 2)
-                            return false;
-
-                        args = args.subspan(1);
-                        return true;
-                    }
-                });
-            });
-        }
+        AppDelegate() = delete;
+        AppDelegate(AppDelegate&&) = delete;
+        AppDelegate(const AppDelegate&) = delete;
 
         void on_should_redraw(AppController&) override {
-
+            // This will eventuall be necessary to redraw the screen
+            // when we have multiple threads updating view state
         }
 
-        void on_execute_command(AppController &controller, std::string_view command) override {
-            Command c;
-            auto args = tokenize(command);
+        void on_execute_command(AppController&, std::string_view command) override {
+            m_console.execute(command);
+        }
 
-            auto print_usage = [&](AppController::State &state) {
-                state.command_output.push_back({
-                    "Usage:",
-                    AppController::CommandOutput::Type::Info
-                });
+        void exit() override {
+            m_exit_closure();
+        }
 
-                for (const auto &usage : m_cmd_parser.example_usages()) {
-                    state.command_output.push_back({
-                        "  " + usage,
-                        AppController::CommandOutput::Type::Info
-                    });
-                }
-            };
-
-            controller.update_state([&](auto &state) {
-                std::span<std::string> parse_span = args;
-                if (!m_cmd_parser.parse(c, parse_span)) {
-                    state.command_output.push_back({
-                        std::string("Unexpected command: ") + std::string(command),
-                        AppController::CommandOutput::Type::Error
-                    });
-
-                    print_usage(state);
-                } else {
-                    state.command_output.push_back({
-                        "Ok",
-                        AppController::CommandOutput::Type::Info
-                    });
-                }
-
+        void write_stdout(std::string str) override {
+            m_controller.update_state([&](AppController::State &state) {
+                state.push_command_info(str);
                 return true;
             });
         }
+
+        void write_stderr(std::string str) override {
+            m_controller.update_state([&](AppController::State &state) {
+                state.push_command_error(str);
+                return true;
+            });
+        }
+
+        bool cmd_move_piece(weechess::Move move) override {
+            return false;
+        }
+
+        static std::shared_ptr<AppDelegate> make_shared(AppController &controller, std::function<void()> exit_closure) {
+            auto shared = std::shared_ptr<AppDelegate>(new AppDelegate(controller, exit_closure));
+            shared->m_console.set_display(shared);
+            shared->m_console.set_service(shared);
+
+            return shared;
+        }
+
+        ~AppDelegate() = default;
 };
 
 int main(int argc, char *argv[]) {
 
-    auto delegate = std::make_shared<AppDelegate>();
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
 
     AppController controller;
+    auto delegate = AppDelegate::make_shared(controller, screen.ExitLoopClosure());
     controller.set_delegate(delegate);
 
+    // Bootstrap a new game here
     auto gamestate = weechess::GameState::new_game();
-
     controller.update_state([&](auto &state) {
         state.game_state = gamestate;
         return true;
     });
 
-    auto screen = ftxui::ScreenInteractive::Fullscreen();
     screen.Loop(controller.renderer());
 }

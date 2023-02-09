@@ -1,10 +1,11 @@
 #include <iostream>
 #include <regex>
 
+#include <weechess/location.h>
+#include <weechess/piece.h>
+#include <weechess/player_state.h>
+
 #include "fen.h"
-#include "location.h"
-#include "piece.h"
-#include "player_state.h"
 
 namespace weechess::fen {
     constexpr const char* regex_string =

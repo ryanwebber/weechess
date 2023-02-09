@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -6,6 +8,30 @@
 #include "../board_printer.h"
 #include "../string_utils.h"
 #include "app_controller.h"
+
+
+std::vector<std::string> split(std::string_view sv) {
+    std::stringstream ss((std::string(sv)));
+    std::vector<std::string> out;
+    std::string s;
+    while (std::getline(ss, s, '\n')) {
+        out.push_back(s);
+    }
+
+    return out;
+}
+
+void AppController::State::push_command_error(std::string_view text) {
+    for (const auto &line : split(text)) {
+        command_output.push_back({ .text = line, .type = CommandOutput::Type::Error });
+    }
+}
+
+void AppController::State::push_command_info(std::string_view text) {
+    for (const auto &line : split(text)) {
+        command_output.push_back({ .text = line, .type = CommandOutput::Type::Info });
+    }
+}
 
 AppController::AppController() {
     auto renderer = ftxui::Renderer([&] {
@@ -98,6 +124,10 @@ void AppController::set_delegate(std::weak_ptr<Delegate> delegate) {
     m_delegate = delegate;
 }
 
+const AppController::State& AppController::state() const {
+    return m_state;
+}
+
 void AppController::update_state(std::function<bool(State&)> fn) {
     bool is_dirty = fn(m_state);
 
@@ -107,8 +137,6 @@ void AppController::update_state(std::function<bool(State&)> fn) {
         }
     }
 }
-
-
 
 static const std::string rank_labels =   " 1 2 3 4 5 6 7 8 ";
 static const std::string file_labels =   "  A   B   C   D   E   F   G   H  ";

@@ -1,4 +1,4 @@
-#include "board.h"
+#include <weechess/board.h>
 
 namespace weechess {
 

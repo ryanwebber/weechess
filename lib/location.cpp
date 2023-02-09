@@ -1,5 +1,5 @@
-#include "board.h"
-#include "location.h"
+#include <weechess/board.h>
+#include <weechess/location.h>
 
 namespace weechess {
 

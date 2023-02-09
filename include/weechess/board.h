@@ -6,8 +6,8 @@
 #include <string>
 #include <string_view>
 
-#include "location.h"
-#include "piece.h"
+#include <weechess/location.h>
+#include <weechess/piece.h>
 
 namespace weechess {
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 
-#include "game_state.h"
+#include <weechess/game_state.h>
 
 namespace weechess {
     namespace fen {

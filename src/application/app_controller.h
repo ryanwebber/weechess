@@ -1,11 +1,12 @@
 #include <functional>
 #include <memory>
+#include <string>
 #include <string_view>
 
 #include <ftxui/component/component.hpp>
 
-#include "board.h"
-#include "game_state.h"
+#include <weechess/board.h>
+#include <weechess/game_state.h>
 
 class AppController {
     public:
@@ -30,6 +31,9 @@ class AppController {
             weechess::GameState game_state;
             std::vector<PastMove> move_history;
             std::vector<CommandOutput> command_output;
+
+            void push_command_error(std::string_view);
+            void push_command_info(std::string_view);
         };
 
         class Delegate {
@@ -46,6 +50,7 @@ class AppController {
         const State& state() const;
         void update_state(std::function<bool(State&)>);
  
+        virtual ~AppController() = default;
     private:
 
         class CommandInput {
