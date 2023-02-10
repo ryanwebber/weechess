@@ -40,6 +40,13 @@ class AppDelegate:
             m_console.execute(command);
         }
 
+        void clear() override {
+            m_controller.update_state([&](AppController::State &state) {
+                state.command_output.clear();
+                return true;
+            });
+        }
+
         void exit() override {
             m_exit_closure();
         }

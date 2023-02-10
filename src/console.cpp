@@ -6,16 +6,19 @@ void with_help(argparse::ArgumentParser& parser) {
         .implicit_value(true);
 }
 
-class HelpCommand : public Console::Command {
+class ClearCommand : public Console::Command {
     public:
-        HelpCommand()
-            : Command("help", {}, [](auto &parser) {
-                parser.add_description("Print the available commands");
+        ClearCommand()
+            : Command("clear", {}, [](auto &parser) {
+                with_help(parser);
+                parser.add_description("Clear the console");
             })
         {}
 
         void execute(const Console &console, argparse::ArgumentParser) const override {
-            console.print_usage();
+            if (auto display = console.display().lock()) {
+                display->clear();
+            }
         }
 };
 
@@ -35,6 +38,19 @@ class ExitCommand : public Console::Command {
         }
 };
 
+class HelpCommand : public Console::Command {
+    public:
+        HelpCommand()
+            : Command("help", {}, [](auto &parser) {
+                parser.add_description("Print the available commands");
+            })
+        {}
+
+        void execute(const Console &console, argparse::ArgumentParser) const override {
+            console.print_usage();
+        }
+};
+
 class MoveCommand : public Console::Command {
     public:
         MoveCommand()
@@ -47,8 +63,6 @@ class MoveCommand : public Console::Command {
         {}
 
         void execute(const Console &console, argparse::ArgumentParser parser) const override {
-            auto service = console.service().lock();
-
             if (auto service = console.service().lock()) {
                 auto origin_sn = parser.get<std::string>("from");
                 auto destination_sn = parser.get<std::string>("to");
@@ -97,8 +111,9 @@ std::vector<std::string> tokenize(std::string_view str) {
 }
 
 Console::Console() {
-    m_commands.push_back(std::make_unique<HelpCommand>());
+    m_commands.push_back(std::make_unique<ClearCommand>());
     m_commands.push_back(std::make_unique<ExitCommand>());
+    m_commands.push_back(std::make_unique<HelpCommand>());
     m_commands.push_back(std::make_unique<MoveCommand>());
 }
 
@@ -119,10 +134,6 @@ void Console::set_service(std::weak_ptr<Service> service) {
 }
 
 void Console::execute(std::string_view command) {
-    if (m_commands.empty()) {
-        initialize();
-    }
-
     auto display = m_display.lock();
     auto service = m_service.lock();
     if (!display || !service) {
@@ -173,34 +184,6 @@ void Console::print_usage() const {
     }
 }
 
-void Console::initialize() {
-    // if (!m_commands.empty()) {
-    //     return;
-    // }
-
-    // // Help command
-    // argparse::ArgumentParser cmd_help_parser("help", "1.0", argparse::default_arguments::none);
-    // cmd_help_parser.add_description("Print the available commands");
-    // m_commands.push_back({ { "help" }, cmd_help_parser });
-
-    // // Exit command
-    // argparse::ArgumentParser cmd_exit_parser("exit", "1.0", argparse::default_arguments::none);
-    // cmd_exit_parser.add_description("Exit the game");
-    // cmd_exit_parser.add_argument("--help")
-    //     .default_value(false)
-    //     .implicit_value(true);
-    // m_commands.push_back({ { "exit" }, cmd_exit_parser });
-
-    // // Move command
-    // argparse::ArgumentParser cmd_move_parser("move", "1.0", argparse::default_arguments::none);
-    // cmd_move_parser.add_argument("--help")
-    //     .default_value(false)
-    //     .implicit_value(true);
-
-    // cmd_move_parser.add_description("Make a move on the board");
-    // m_commands.push_back({ { "move", "m" }, cmd_move_parser });
-}
-
 std::vector<std::string> form_names(std::string name, std::vector<std::string> aliases) {
     aliases.insert(aliases.begin(), name);
     return aliases;
@@ -234,7 +217,7 @@ void Console::Command::execute(const Console &console, std::vector<std::string> 
         return;
     }
 
-    if (parser.is_configured("--help") && parser.present("--help")) {
+    if (parser.is_configured("--help") && parser.get<bool>("--help")) {
         if (auto display = console.display().lock()) {
             display->write_stdout(parser.usage());
         }

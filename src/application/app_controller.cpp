@@ -14,8 +14,14 @@ std::vector<std::string> split(std::string_view sv) {
     std::stringstream ss((std::string(sv)));
     std::vector<std::string> out;
     std::string s;
-    while (std::getline(ss, s, '\n')) {
-        out.push_back(s);
+    while (std::getline(ss, s)) {
+        // Hack to get empty lines displaying correctly.
+        // It sucks that we have to do this line by line
+        // because the paragraph element doesn't support
+        // newlines
+        if (s.empty())
+            s += " ";
+        out.push_back(std::move(s));
     }
 
     return out;
@@ -170,6 +176,11 @@ ftxui::Component AppController::ViewState::component_in_focus() const {
     }
 }
 
+enum class BoardDecoration {
+    None = 0,
+    Highlighted,
+};
+
 ftxui::Element AppController::render() {
     using namespace ftxui;
 
@@ -178,37 +189,42 @@ ftxui::Element AppController::render() {
         highlighted_location = m_view_state.highlighted_location;
     }
 
-    std::vector<weechess::Location> hinted_locations;
-    for (const auto& m : m_state.game_state.legal_moves()) {
-        if (m.origin == m_view_state.highlighted_location) {
-            hinted_locations.push_back(m.destination);
+    BoardPrinter bp;
+    BoardPrinter::Buffer<BoardDecoration> decorations = { };
+
+    // Place the pieces on the board
+    for (auto i = 0; i < weechess::Board::cell_count; i++) {
+        weechess::Location l(i);
+        auto piece = m_state.game_state.board().piece_at(l);
+        if (piece.exists()) {
+            bp[l].paint_symbol(piece.to_symbol());
         }
     }
 
-    BoardPrinter bp;
-    auto board_render = bp.print(
-        m_state.game_state.board(),
-        highlighted_location,
-        hinted_locations
-        );
+    // Highlight the selected cell
+    if (highlighted_location.has_value()) {
+        auto cell = bp[highlighted_location.value()];
+        cell.paint_border(BoardPrinter::Border::Detached);
+        for (auto o : BoardPrinter::Cell::offsets)
+            decorations[cell.offset() + o] = BoardDecoration::Highlighted;
+    }
 
     std::vector<Element> board_rows;
-    for (const auto &row : board_render.cells) {
+    for (auto r = 0; r < bp.rows(); r++) {
         std::vector<Element> row_cells;
-        for (const auto &cell : row) {
-            auto cell_elem = text(to_string(cell.symbol));
-            switch (cell.decoration) {
-                case BoardRender::Decoration::Selected:
-                    cell_elem |= color(Color::Yellow);
+        for (auto c = 0; c < bp.cols(); c++) {
+            auto cell = bp.cell_at(r, c);
+            auto elem = text(to_string(*cell));
+
+            switch (decorations[cell.offset()]) {
+                case BoardDecoration::None:
                     break;
-                case BoardRender::Decoration::Highlighted:
-                    cell_elem |= color(Color::Cyan);
-                    break;
-                default:
+                case BoardDecoration::Highlighted:
+                    elem |= color(Color::Yellow);
                     break;
             }
 
-            row_cells.push_back(cell_elem);
+            row_cells.push_back(elem);
         }
 
         board_rows.push_back(hbox(std::move(row_cells)));

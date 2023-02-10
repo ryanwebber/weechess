@@ -14,6 +14,7 @@ namespace weechess {
     class Board {
     public:
         static constexpr size_t cell_count = 64;
+
         using Buffer = std::array<Piece, cell_count>;
 
         Board();

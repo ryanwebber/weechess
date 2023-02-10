@@ -15,6 +15,7 @@ class Console {
         class Display {
         public:
             virtual void exit() = 0;
+            virtual void clear() = 0;
             virtual void write_stdout(std::string) = 0;
             virtual void write_stderr(std::string) = 0;
 
@@ -63,8 +64,6 @@ class Console {
         std::vector<std::unique_ptr<Command>> m_commands;
         std::weak_ptr<Display> m_display;
         std::weak_ptr<Service> m_service;
-
-        void initialize();
 
         friend class CommandParser;
 };

@@ -1,16 +1,6 @@
 #include "board_printer.h"
 
-#include <iostream>
-
-constexpr size_t row_char_count = 17;
-constexpr size_t col_char_count = 33;
-
-struct Vec2Int {
-    int x;
-    int y;
-};
-
-static const char16_t board_template[] = 
+constexpr std::u16string_view board_template = 
     u"╭───┬───┬───┬───┬───┬───┬───┬───╮"
     u"│   │   │   │   │   │   │   │   │"
     u"├───┼───┼───┼───┼───┼───┼───┼───┤"
@@ -30,122 +20,65 @@ static const char16_t board_template[] =
     u"╰───┴───┴───┴───┴───┴───┴───┴───╯"
     ;
 
-static const char16_t cell_template[] =
+constexpr std::u16string_view cell_template =
     u"╭───╮"
     u"│   │"
     u"╰───╯"
     ;
 
-static const std::vector<Vec2Int> offsets = {
-    Vec2Int {  0, -1 },
-    Vec2Int {  1, -1 },
-    Vec2Int {  2, -1 },
-    Vec2Int {  2,  0 },
-    Vec2Int {  2,  1 },
-    Vec2Int {  1,  1 },
-    Vec2Int {  0,  1 },
-    Vec2Int { -1,  1 },
-    Vec2Int { -2,  1 },
-    Vec2Int { -2,  0 },
-    Vec2Int { -2, -1 },
-    Vec2Int { -1, -1 },
-};
+BoardPrinter::BoardPrinter()
+    : m_data(board_template) {}
 
-void draw_box(
-    std::vector<std::vector<BoardRender::Cell>> &cells,
-    Vec2Int offset,
-    weechess::Piece piece,
-    BoardRender::Decoration decoration)
+std::u16string_view BoardPrinter::str() const {
+    return m_data;
+}
+
+std::u16string_view BoardPrinter::row_str(size_t row) const {
+    return str().substr(row * col_char_count, col_char_count);
+}
+
+BoardPrinter::Cell BoardPrinter::operator [](weechess::Location location) {
+    auto row = 1 + location.rank() * 2;
+    auto col = 2 + location.file() * 4;
+    return this->cell_at(row, col);
+}
+
+BoardPrinter::Cell BoardPrinter::cell_at(size_t row, size_t col) {
+    return Cell(*this, row * col_char_count + col);
+}
+
+BoardPrinter::Cell::Cell(BoardPrinter& printer, size_t offset)
+    : m_printer(printer)
+    , m_offset(offset)
 {
-    // Figure out which symbol we want if there is no piece
-    // at that location
-    char16_t symbol = piece.to_symbol();
-    if (!piece.exists()) {
-        switch (decoration) {
-            case BoardRender::Decoration::Selected:
-                symbol = u'·';
-                break;
-            case BoardRender::Decoration::Highlighted:
-                symbol = u'◆'; // u'⬩';
-                break;
-            default:
-                break;
+}
+
+void BoardPrinter::Cell::paint_border(Border border) {
+    switch (border) {
+        case Border::Integrated: {
+            for (auto offset : BoardPrinter::Cell::offsets)
+                if (offset != 0)
+                    m_printer.m_data[m_offset + offset] = board_template[m_offset + offset];
+            break;
         }
-    }
-
-    // Middle cell
-    cells[offset.y][offset.x] = BoardRender::Cell {
-        symbol,
-        decoration
-    };
-
-    for (const auto &l : offsets) {
-        auto row = offset.y + l.y;
-        auto col = offset.x + l.x;
-
-        if (row < 0 || row >= row_char_count || col < 0 || col >= col_char_count) {
-            continue;
+        case Border::Detached: {
+            for (auto i = 0; i < BoardPrinter::Cell::offsets.size(); i++)
+                if (BoardPrinter::Cell::offsets[i] != 0)
+                    m_printer.m_data[m_offset + BoardPrinter::Cell::offsets[i]] = cell_template[i];
+            break;
         }
-
-        auto symbol = decoration == BoardRender::Decoration::Selected ?
-            cell_template[(l.y + 1) * 5 + (2 + l.x)] :
-            board_template[row * col_char_count + col];
-
-        auto border_decoration = decoration == BoardRender::Decoration::Selected ?
-            BoardRender::Decoration::Selected : BoardRender::Decoration::None;
-
-        cells[row][col] = BoardRender::Cell { symbol, border_decoration };
     }
 }
 
-BoardRender BoardPrinter::print(
-    const weechess::Board& board,
-    std::optional<weechess::Location> selected_location,
-    std::span<const weechess::Location> highlighted_locations
-) const {
-    using Cell = BoardRender::Cell;
-    using Decoration = BoardRender::Decoration;
+void BoardPrinter::Cell::paint_symbol(char16_t symbol)
+{
+    m_printer.m_data[m_offset] = symbol;
+}
 
-    std::vector<std::vector<Cell>> cells;
-    
-    auto rank_to_row = [](uint8_t rank) {
-        return 1 + rank * 2;
-    };
+char16_t BoardPrinter::Cell::operator *() const {
+    return m_printer.m_data[m_offset];
+}
 
-    auto file_to_col = [](uint8_t file) {
-        return 2 + file * 4;
-    };
-
-    // Fill up the whole board with spaces
-    for (auto r = 0; r < row_char_count; r++) {
-        cells.push_back(std::vector<Cell>());
-        for (auto c = 0; c < col_char_count; c++) {
-            cells[r].push_back(Cell { ' ', Decoration::None });
-        }
-    }
-
-    // Draw each cells individually. This is a bit inefficient because of the overlap
-    // between adjacent cells
-    for (auto i = 0; i < weechess::Board::cell_count; i++) {
-        weechess::Location location(i);
-        auto row = rank_to_row(location.rank());
-        auto col = file_to_col(location.file());
-        draw_box(cells, { col, row }, board.piece_at(location), Decoration::None);
-    }
-
-    // Draw highlighted cells
-    for (const auto &loc : highlighted_locations) {
-        auto row = rank_to_row(loc.rank());
-        auto col = file_to_col(loc.file());
-        draw_box(cells, { col, row }, board.piece_at(loc), Decoration::Highlighted);
-    }
-
-    // Finally, draw the selected cell, because it's border is different
-    if (selected_location.has_value()) {
-        auto row = rank_to_row(selected_location->rank());
-        auto col = file_to_col(selected_location->file());
-        draw_box(cells, { col, row }, board.piece_at(*selected_location), Decoration::Selected);
-    }
-
-    return BoardRender { cells, row_char_count, col_char_count };
+size_t BoardPrinter::Cell::offset() const {
+    return m_offset;
 }
