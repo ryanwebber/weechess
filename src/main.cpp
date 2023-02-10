@@ -10,6 +10,7 @@
 
 #include "application/app_controller.h"
 #include "console.h"
+#include "log.h"
 
 class AppDelegate:
     public AppController::Delegate,
@@ -81,6 +82,7 @@ class AppDelegate:
 };
 
 int main(int argc, char *argv[]) {
+    log::init_logging();
 
     auto screen = ftxui::ScreenInteractive::Fullscreen();
 

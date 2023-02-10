@@ -21,10 +21,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
 #
 # Library
 #
+
+# Avoids linking or including spdlog in the library code
+set(LIB_LOGGING_ENABLED ON)
 
 set(LIB_TARGET weechess)
 set(LIB_SOURCES
@@ -46,7 +50,18 @@ target_include_directories(${LIB_TARGET}
 
 target_compile_features(${LIB_TARGET} PUBLIC cxx_std_20)
 
-#
+if (LIB_LOGGING_ENABLED)
+    target_compile_definitions(${LIB_TARGET}
+            PRIVATE
+                WEECHESS_LOGGING_ENABLED
+            )
+    
+    target_link_libraries(${LIB_TARGET}
+            PRIVATE
+                spdlog::spdlog
+            )
+endif()
+
 # CLI
 #
 
@@ -61,11 +76,23 @@ if(NOT ftxui_POPULATED)
     add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+FetchContent_Declare(spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog
+  GIT_TAG v1.11.0
+)
+
+FetchContent_GetProperties(spdlog)
+if (NOT spdlog_POPULATED)
+    FetchContent_Populate(spdlog)
+    add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif ()
+
 set(CLI_TARGET weechess-cli)
 set(CLI_SOURCES
         src/application/app_controller.cpp
         src/board_printer.cpp
         src/console.cpp
+        src/log.cpp
         src/main.cpp
         src/string_utils.cpp
         )
@@ -73,12 +100,13 @@ set(CLI_SOURCES
 add_executable(${CLI_TARGET} ${CLI_SOURCES})
 
 target_link_libraries(${CLI_TARGET}
-    PRIVATE
-        ${LIB_TARGET}
-        ftxui::screen
-        ftxui::dom
-        ftxui::component
-        )
+        PRIVATE
+            ${LIB_TARGET}
+            ftxui::screen
+            ftxui::dom
+            ftxui::component
+            spdlog::spdlog
+            )
 
 target_include_directories(${CLI_TARGET}
         PRIVATE

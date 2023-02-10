@@ -22,6 +22,16 @@ namespace weechess {
             King    = 1 << 5,
         };
 
+        static constexpr uint8_t to_index(Type type) {
+            uint8_t result;
+            uint8_t x = static_cast<uint8_t>(type);
+            while (x >> 1) {
+                result++;
+            }
+
+            return result;
+        }
+
         uint8_t representation;
 
         Piece();

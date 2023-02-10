@@ -60,7 +60,7 @@ namespace weechess {
     }
 
     std::span<const Move> GameState::legal_moves() const {
-        return const_cast<LazyLegalMoves&>(m_legal_moves).get_or_compute(*this);
+        return generate_legal_moves(*this);
     }
 
     bool GameState::is_check() const {
@@ -96,7 +96,7 @@ namespace weechess {
             return { };
         }
 
-        // TODO: This is does not account for:
+        // TODO: This does not account for:
         //  * Castle rights
         //  * Castling
         //  * En passant
@@ -112,14 +112,6 @@ namespace weechess {
             game_state.castle_rights(),
             { }
         };
-    }
-
-    std::span<const Move> GameState::LazyLegalMoves::get_or_compute(const GameState& game_state) {
-        if (!m_legal_moves.has_value()) {
-            m_legal_moves = generate_legal_moves(game_state);
-        }
-
-        return m_legal_moves.value();
     }
 
     std::vector<Move> generate_legal_moves(const GameState&) {

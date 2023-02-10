@@ -56,19 +56,10 @@ namespace weechess {
         static std::optional<GameState> by_performing_move(const GameState&, const Move&, MoveDetail*);
     private:
 
-        class LazyLegalMoves {
-        public:
-            LazyLegalMoves() = default;
-            std::span<const Move> get_or_compute(const GameState&);
-        private:
-            std::optional<std::vector<Move>> m_legal_moves { };
-        };
-
         Board m_board;
         Color m_turn_to_move;
 
         PlayerState<CastleRights> m_castle_rights;
         std::optional<Location> m_en_passant_target;
-        LazyLegalMoves m_legal_moves { };
     };
 }
