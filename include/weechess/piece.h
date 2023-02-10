@@ -5,51 +5,54 @@
 
 namespace weechess {
 
-    enum class Color: uint8_t {
-        White   = 1 << 6,
-        Black   = 1 << 7,        
+enum class Color : uint8_t {
+    White = 1 << 4,
+    Black = 1 << 5,
+};
+
+struct Piece {
+
+    enum class Type : uint8_t {
+        None = 0,
+        Pawn = 1,
+        Knight = 2,
+        Bishop = 3,
+        Rook = 4,
+        Queen = 5,
+        King = 6,
     };
 
-    struct Piece {
+    uint8_t representation;
 
-        enum class Type: uint8_t {
-            None    = 0,
-            Pawn    = 1 << 0,
-            Knight  = 1 << 1,
-            Bishop  = 1 << 2,
-            Rook    = 1 << 3,
-            Queen   = 1 << 4,
-            King    = 1 << 5,
-        };
+    Piece();
+    Piece(Type type, Color color);
 
-        static constexpr uint8_t to_index(Type type) {
-            uint8_t result;
-            uint8_t x = static_cast<uint8_t>(type);
-            while (x >> 1) {
-                result++;
-            }
+    bool is(Type type) const;
+    bool is(Color color) const;
 
-            return result;
-        }
+    bool exists() const { return (representation & 0b111111) != 0; }
 
-        uint8_t representation;
+    char16_t to_symbol() const;
 
-        Piece();
-        Piece(Type type, Color color);
+    static Piece none() { return Piece(); }
+};
 
-        bool is(Type type) const;
-        bool is(Color color) const;
+Color invert_color(Color);
 
-        bool exists() const {
-            return (representation & 0b111111) != 0;
-        }
+template <typename T> class PieceMap : public std::array<T, 6> {
+public:
+    using std::array<T, 6>::array;
 
-        char16_t to_symbol() const;
+    T& operator[](Piece::Type type)
+    {
+        auto idx = static_cast<size_t>(type) & 0b111;
+        return std::array<T, 6>::operator[](idx);
+    }
 
-        static Piece none() {
-            return Piece();
-        }
-    };
-
-    Color invert_color(Color);
+    const T& operator[](Piece::Type type) const
+    {
+        auto idx = static_cast<size_t>(type) & 0b111;
+        return std::array<T, 6>::operator[](idx);
+    }
+};
 }

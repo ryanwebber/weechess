@@ -9,8 +9,8 @@
 #include "../string_utils.h"
 #include "app_controller.h"
 
-
-std::vector<std::string> split(std::string_view sv) {
+std::vector<std::string> split(std::string_view sv)
+{
     std::stringstream ss((std::string(sv)));
     std::vector<std::string> out;
     std::string s;
@@ -27,25 +27,25 @@ std::vector<std::string> split(std::string_view sv) {
     return out;
 }
 
-void AppController::State::push_command_error(std::string_view text) {
-    for (const auto &line : split(text)) {
+void AppController::State::push_command_error(std::string_view text)
+{
+    for (const auto& line : split(text)) {
         command_output.push_back({ .text = line, .type = CommandOutput::Type::Error });
     }
 }
 
-void AppController::State::push_command_info(std::string_view text) {
-    for (const auto &line : split(text)) {
+void AppController::State::push_command_info(std::string_view text)
+{
+    for (const auto& line : split(text)) {
         command_output.push_back({ .text = line, .type = CommandOutput::Type::Info });
     }
 }
 
-AppController::AppController() {
-    auto renderer = ftxui::Renderer([&] {
-        return render();
-    });
+AppController::AppController()
+{
+    auto renderer = ftxui::Renderer([&] { return render(); });
 
     renderer |= ftxui::CatchEvent([&](ftxui::Event event) {
-        
         // Pass any events to the current component in focus
         // if it can handle them
         auto current_focus = m_view_state.component_in_focus();
@@ -63,57 +63,57 @@ AppController::AppController() {
             m_view_state.focus = ViewState::Focus::CommandWindow;
             return true;
         }
-        
+
         // Otherwise handle events per component
         switch (m_view_state.focus) {
-            case ViewState::Focus::ChessWindow: {
+        case ViewState::Focus::ChessWindow: {
 
-                // Handle navigation around the board with arrows
-                if (event == ftxui::Event::ArrowLeft) {
-                    if (auto l = m_view_state.highlighted_location.offset_by(-1, 0))
-                        m_view_state.highlighted_location = l.value();
-                    return true;
-                } else if (event == ftxui::Event::ArrowRight) {
-                    if (auto l = m_view_state.highlighted_location.offset_by(1, 0))
-                        m_view_state.highlighted_location = l.value();
-                    return true;
-                } else if (event == ftxui::Event::ArrowUp) {
-                    if (auto l = m_view_state.highlighted_location.offset_by(0, -1))
-                        m_view_state.highlighted_location = l.value();
-                    return true;
-                } else if (event == ftxui::Event::ArrowDown) {
-                    if (auto l = m_view_state.highlighted_location.offset_by(0, 1))
-                        m_view_state.highlighted_location = l.value();
-                    return true;
-                }
+            // Handle navigation around the board with arrows
+            if (event == ftxui::Event::ArrowLeft) {
+                if (auto l = m_view_state.highlighted_location.offset_by(-1, 0))
+                    m_view_state.highlighted_location = l.value();
+                return true;
+            } else if (event == ftxui::Event::ArrowRight) {
+                if (auto l = m_view_state.highlighted_location.offset_by(1, 0))
+                    m_view_state.highlighted_location = l.value();
+                return true;
+            } else if (event == ftxui::Event::ArrowUp) {
+                if (auto l = m_view_state.highlighted_location.offset_by(0, -1))
+                    m_view_state.highlighted_location = l.value();
+                return true;
+            } else if (event == ftxui::Event::ArrowDown) {
+                if (auto l = m_view_state.highlighted_location.offset_by(0, 1))
+                    m_view_state.highlighted_location = l.value();
+                return true;
+            }
 
-                // Handle jumping to a specific file or rank on the board
-                if (event.is_character() && event.character().size() > 0) {
-                    auto c = event.character()[0];
-                    if (c > '0' && c <= '8') {
-                        m_view_state.highlighted_location = weechess::Location::from_rank_and_file(
-                            c - '1', m_view_state.highlighted_location.file());
-                        return true;
-                    } else if (c >= 'a' && c <= 'h') {
-                        m_view_state.highlighted_location = weechess::Location::from_rank_and_file(
-                            m_view_state.highlighted_location.rank(), c - 'a');
-                        return true;
-                    }
+            // Handle jumping to a specific file or rank on the board
+            if (event.is_character() && event.character().size() > 0) {
+                auto c = event.character()[0];
+                if (c > '0' && c <= '8') {
+                    m_view_state.highlighted_location
+                        = weechess::Location::from_rank_and_file(c - '1', m_view_state.highlighted_location.file());
+                    return true;
+                } else if (c >= 'a' && c <= 'h') {
+                    m_view_state.highlighted_location
+                        = weechess::Location::from_rank_and_file(m_view_state.highlighted_location.rank(), c - 'a');
+                    return true;
                 }
             }
-            case ViewState::Focus::CommandWindow: {
-                if (event == ftxui::Event::Return) {
-                    auto &command_text = m_view_state.command_input.text();
-                    if (command_text.size() > 0) {
-                        m_state.command_output.push_back({ "> " + command_text, CommandOutput::Type::Command });
-                        if (auto delegate = m_delegate.lock()) {
-                            delegate->on_execute_command(*this, command_text);
-                        }
-
-                        command_text.clear();
+        }
+        case ViewState::Focus::CommandWindow: {
+            if (event == ftxui::Event::Return) {
+                auto& command_text = m_view_state.command_input.text();
+                if (command_text.size() > 0) {
+                    m_state.command_output.push_back({ "> " + command_text, CommandOutput::Type::Command });
+                    if (auto delegate = m_delegate.lock()) {
+                        delegate->on_execute_command(*this, command_text);
                     }
+
+                    command_text.clear();
                 }
             }
+        }
         }
 
         return false;
@@ -122,19 +122,14 @@ AppController::AppController() {
     m_renderer = renderer;
 }
 
-const ftxui::Component& AppController::renderer() const {
-    return m_renderer;
-}
+const ftxui::Component& AppController::renderer() const { return m_renderer; }
 
-void AppController::set_delegate(std::weak_ptr<Delegate> delegate) {
-    m_delegate = delegate;
-}
+void AppController::set_delegate(std::weak_ptr<Delegate> delegate) { m_delegate = delegate; }
 
-const AppController::State& AppController::state() const {
-    return m_state;
-}
+const AppController::State& AppController::state() const { return m_state; }
 
-void AppController::update_state(std::function<bool(State&)> fn) {
+void AppController::update_state(std::function<bool(State&)> fn)
+{
     bool is_dirty = fn(m_state);
 
     if (is_dirty) {
@@ -144,35 +139,26 @@ void AppController::update_state(std::function<bool(State&)> fn) {
     }
 }
 
-static const std::string rank_labels =   " 1 2 3 4 5 6 7 8 ";
-static const std::string file_labels =   "  A   B   C   D   E   F   G   H  ";
+static const std::string rank_labels = " 1 2 3 4 5 6 7 8 ";
+static const std::string file_labels = "  A   B   C   D   E   F   G   H  ";
 
-AppController::CommandInput::CommandInput() {
-    m_input = ftxui::Input(&m_text, "");
-}
+AppController::CommandInput::CommandInput() { m_input = ftxui::Input(&m_text, ""); }
 
-std::string& AppController::CommandInput::text() {
-    return m_text;
-}
+std::string& AppController::CommandInput::text() { return m_text; }
 
-const std::string& AppController::CommandInput::text() const {
-    return m_text;
-}
+const std::string& AppController::CommandInput::text() const { return m_text; }
 
-const ftxui::Component& AppController::CommandInput::renderer() const {
-    return m_input;
-}
+const ftxui::Component& AppController::CommandInput::renderer() const { return m_input; }
 
-AppController::ViewState::ViewState() {
-    focus = Focus::ChessWindow;
-}
+AppController::ViewState::ViewState() { focus = Focus::ChessWindow; }
 
-ftxui::Component AppController::ViewState::component_in_focus() const {
+ftxui::Component AppController::ViewState::component_in_focus() const
+{
     switch (focus) {
-        case Focus::ChessWindow:
-            return nullptr;
-        case Focus::CommandWindow:
-            return command_input.renderer();
+    case Focus::ChessWindow:
+        return nullptr;
+    case Focus::CommandWindow:
+        return command_input.renderer();
     }
 }
 
@@ -181,7 +167,8 @@ enum class BoardDecoration {
     Highlighted,
 };
 
-ftxui::Element AppController::render() {
+ftxui::Element AppController::render()
+{
     using namespace ftxui;
 
     std::optional<weechess::Location> highlighted_location;
@@ -190,7 +177,7 @@ ftxui::Element AppController::render() {
     }
 
     BoardPrinter bp;
-    BoardPrinter::Buffer<BoardDecoration> decorations = { };
+    BoardPrinter::Buffer<BoardDecoration> decorations = {};
 
     // Place the pieces on the board
     for (auto i = 0; i < weechess::Board::cell_count; i++) {
@@ -217,11 +204,11 @@ ftxui::Element AppController::render() {
             auto elem = text(to_string(*cell));
 
             switch (decorations[cell.offset()]) {
-                case BoardDecoration::None:
-                    break;
-                case BoardDecoration::Highlighted:
-                    elem |= color(Color::Yellow);
-                    break;
+            case BoardDecoration::None:
+                break;
+            case BoardDecoration::Highlighted:
+                elem |= color(Color::Yellow);
+                break;
             }
 
             row_cells.push_back(elem);
@@ -234,25 +221,29 @@ ftxui::Element AppController::render() {
         return to_string(piece.to_symbol()) + " → " + location.to_string();
     };
 
-    std::vector<std::vector<std::string>> history { };
-    
+    std::vector<std::vector<std::string>> history {};
+
     {
         constexpr size_t max_history = 16;
-        size_t i_start = m_state.move_history.size() > max_history ?
-            m_state.move_history.size() - max_history : 0;
+        size_t i_start = m_state.move_history.size() > max_history ? m_state.move_history.size() - max_history : 0;
 
         // Offset to even numbers properly
-        i_start = ((i_start+1) / 2) * 2;
+        i_start = ((i_start + 1) / 2) * 2;
 
-        for (auto i = i_start; i < i_start + max_history; i += 2)
-        {
-            auto s1 = i < m_state.move_history.size() ?
-                format_move(m_state.move_history[i].piece, m_state.move_history[i].location) : "      ";
+        for (auto i = i_start; i < i_start + max_history; i += 2) {
+            auto s1 = i < m_state.move_history.size()
+                ? format_move(m_state.move_history[i].piece, m_state.move_history[i].location)
+                : "      ";
 
-            auto s2 = (i + 1) < m_state.move_history.size() ?
-                format_move(m_state.move_history[i + 1].piece, m_state.move_history[i + 1].location) : "      ";
+            auto s2 = (i + 1) < m_state.move_history.size()
+                ? format_move(m_state.move_history[i + 1].piece, m_state.move_history[i + 1].location)
+                : "      ";
 
-            history.push_back({ std::to_string(i/2 + 1), s1, s2, });
+            history.push_back({
+                std::to_string(i / 2 + 1),
+                s1,
+                s2,
+            });
         }
     }
 
@@ -269,47 +260,45 @@ ftxui::Element AppController::render() {
         command_input |= inverted;
     }
 
-    auto prompt_decoration = m_view_state.focus == AppController::ViewState::Focus::CommandWindow ? color(Color::Yellow) : dim;
+    auto prompt_decoration
+        = m_view_state.focus == AppController::ViewState::Focus::CommandWindow ? color(Color::Yellow) : dim;
 
     std::vector<Element> command_history;
     for (const auto& output : m_state.command_output) {
         auto p = paragraph(output.text);
         switch (output.type) {
-            case CommandOutput::Type::Info:
-                p |= dim;
-                break;
-            case CommandOutput::Type::Error:
-                p |= color(Color::Red);
-                break;
-            default:
-                break;
+        case CommandOutput::Type::Info:
+            p |= dim;
+            break;
+        case CommandOutput::Type::Error:
+            p |= color(Color::Red);
+            break;
+        default:
+            break;
         }
 
         command_history.push_back(p);
     }
 
-    auto document = vbox({
-        hbox({
-            vtext(rank_labels) | hcenter | size(WIDTH, EQUAL, 3) | dim,
-            vbox({
-                vbox(std::move(board_rows)),
-                text(file_labels) | hcenter | dim,
-            }),
-            filler() | size(WIDTH, EQUAL, 2),
-            window(text("History") | hcenter, table.Render() | size(WIDTH, EQUAL, 23)),
-            window(text("Logs") | hcenter, text("")) | flex,
-        }),
+    auto document = vbox({ hbox({
+                               vtext(rank_labels) | hcenter | size(WIDTH, EQUAL, 3) | dim,
+                               vbox({
+                                   vbox(std::move(board_rows)),
+                                   text(file_labels) | hcenter | dim,
+                               }),
+                               filler() | size(WIDTH, EQUAL, 2),
+                               window(text("History") | hcenter, table.Render() | size(WIDTH, EQUAL, 23)),
+                               window(text("Logs") | hcenter, text("")) | flex,
+                           }),
         vbox({
-            vbox({
-                command_history
-            }) | focusPositionRelative(0, 1) | yframe | flex,
+            vbox({ command_history }) | focusPositionRelative(0, 1) | yframe | flex,
             hbox({
                 /* Command input */
                 text("> ") | prompt_decoration,
                 command_input | flex,
             }),
-        }) | flex | border
-    });
+        }) | flex
+            | border });
 
     return document;
 }

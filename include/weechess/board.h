@@ -11,23 +11,23 @@
 
 namespace weechess {
 
-    class Board {
-    public:
-        static constexpr size_t cell_count = 64;
+class Board {
+public:
+    static constexpr size_t cell_count = 64;
 
-        using Buffer = std::array<Piece, cell_count>;
+    using Buffer = std::array<Piece, cell_count>;
 
-        Board();
-        Board(Buffer);
+    Board();
+    Board(Buffer);
 
-        Piece piece_at(Location location) const;
-        Piece set_piece_at(Location location, Piece piece);
+    Piece piece_at(Location location) const;
+    Piece set_piece_at(Location location, Piece piece);
 
-        Color color_at(Location location) const;
+    Color color_at(Location location) const;
 
-        std::span<const Piece> cells() const;
+    std::span<const Piece> cells() const;
 
-    private:
-        Buffer m_cells;
-    };
+private:
+    Buffer m_cells;
+};
 }

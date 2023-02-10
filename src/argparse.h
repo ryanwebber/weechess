@@ -1,3 +1,4 @@
+// clang-format off
 /*
   __ _ _ __ __ _ _ __   __ _ _ __ ___  ___
  / _` | '__/ _` | '_ \ / _` | '__/ __|/ _ \ Argument Parser for Modern C++
@@ -1694,3 +1695,4 @@ private:
 };
 
 } // namespace argparse
+// clang-format on

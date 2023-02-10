@@ -7,12 +7,12 @@
 
 namespace weechess {
 
-    struct Move {
-        Location origin;
-        Location destination;
-        std::optional<Piece::Piece::Type> promotion { };
+struct Move {
+    Location origin;
+    Location destination;
+    std::optional<Piece::Piece::Type> promotion {};
 
-        friend bool operator==(Move const&, Move const&) = default;
-    };
+    friend bool operator==(Move const&, Move const&) = default;
+};
 
 }
