@@ -18,6 +18,8 @@ public:
     {
     }
 
+    PlayerState<T> flipped() const { return PlayerState<T>(m_black_state, m_white_state); }
+
     T& operator[](Color color)
     {
         if (color == Color::White) {

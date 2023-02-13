@@ -13,6 +13,8 @@ bool Piece::is(Type type) const { return (representation & static_cast<uint8_t>(
 
 bool Piece::is(Color color) const { return (representation & static_cast<uint8_t>(color)) != 0; }
 
+Piece::Type Piece::type() const { return static_cast<Type>(representation & 0b111); }
+
 char16_t Piece::to_symbol() const
 {
     if (is(Type::Pawn)) {

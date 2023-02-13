@@ -12,6 +12,10 @@ struct Move {
     Location destination;
     std::optional<Piece::Piece::Type> promotion {};
 
+    Move(Location origin, Location destination)
+        : origin(origin)
+        , destination(destination) {};
+
     friend bool operator==(Move const&, Move const&) = default;
 };
 

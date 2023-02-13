@@ -6,7 +6,7 @@
 namespace log {
 void init_logging()
 {
-    auto shared_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("_weechess-cli.log");
+    auto shared_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(WEECHESS_LOG_FILE);
 
     auto lib_logger = std::make_shared<spdlog::logger>("weechess", shared_sink);
     lib_logger->set_level(spdlog::level::debug);

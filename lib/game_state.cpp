@@ -3,7 +3,7 @@
 
 namespace weechess {
 
-std::vector<Move> generate_legal_moves(const GameState&);
+GameState::Analysis analyze(const GameState& game_state);
 
 bool CastleRights::has_rights() const { return can_castle_kingside || can_castle_queensize; }
 
@@ -16,7 +16,6 @@ GameState::GameState()
     , m_castle_rights(CastleRights::all())
     , m_en_passant_target(std::nullopt)
 {
-    analyze();
 }
 
 GameState::GameState(
@@ -26,7 +25,6 @@ GameState::GameState(
     , m_castle_rights(castle_rights)
     , m_en_passant_target(en_passant_target)
 {
-    analyze();
 }
 
 const Color& GameState::turn_to_move() const { return m_turn_to_move; }
@@ -39,25 +37,41 @@ std::string GameState::to_fen() const { return fen::to_fen(*this); }
 
 std::optional<GameState> GameState::from_fen(std::string_view fen_sv) { return fen::from_fen(fen_sv); }
 
-bool GameState::is_legal_move(const Move& move) const
-{
-    auto legal_moves = this->legal_moves();
-    // return std::find(legal_moves.begin(), legal_moves.end(), move) !=
-    // legal_moves.end();
-    return false;
-}
-
-std::span<const Move> GameState::legal_moves() const { return generate_legal_moves(*this); }
-
-bool GameState::is_check() const { return false; }
-
-bool GameState::is_checkmate() const { return is_check() && legal_moves().empty(); }
-
-bool GameState::is_stalemate() const { return !is_check() && legal_moves().empty(); }
-
 GameState GameState::new_game() { return GameState::from_fen(fen::initial_gamestate_fen).value(); }
 
 const Board& GameState::board() const { return m_board; }
+
+const GameState::Analysis& GameState::analysis() const
+{
+    if (!m_analysis) {
+        auto mut_this = const_cast<GameState*>(this);
+        mut_this->m_analysis = analyze(*this);
+    }
+
+    return *m_analysis;
+}
+
+GameState GameState::as_monochromatic(Color perspective) const
+{
+    if (perspective == m_turn_to_move) {
+        return *this;
+    }
+
+    auto castle_rights = m_castle_rights.flipped();
+
+    auto en_passant_target = m_en_passant_target;
+    if (en_passant_target) {
+        en_passant_target = en_passant_target->opposite();
+    }
+
+    Board board;
+    for (auto i = 0; i < Board::cell_count; i++) {
+        Location l(i);
+        board.set_piece_at(l.opposite(), m_board.piece_at(l));
+    }
+
+    return GameState { board, perspective, castle_rights, en_passant_target };
+}
 
 std::optional<GameState> GameState::by_performing_move(const GameState& game_state, const Move& move, MoveDetail*)
 {
@@ -69,7 +83,7 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
         return {};
     }
 
-    if (!game_state.is_legal_move(move)) {
+    if (!game_state.analysis().is_legal_move(move)) {
         return {};
     }
 
@@ -86,14 +100,101 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
     return GameState { board, invert_color(game_state.turn_to_move()), game_state.castle_rights(), {} };
 }
 
-void GameState::analyze() { }
-
-std::vector<Move> generate_legal_moves(const GameState&)
+GameState::Analysis::Analysis(
+    bool is_check, std::vector<Move> legal_moves, std::array<uint8_t, Board::cell_count> threat_map)
+    : m_is_check(is_check)
+    , m_legal_moves(legal_moves)
+    , m_threat_map(threat_map)
+    , m_legal_moves_by_location({})
 {
-    // TODO: Implement this
-    return {
-        Move { Location::from_rank_and_file(1, 3), Location::from_rank_and_file(2, 3) },
-        Move { Location::from_rank_and_file(1, 3), Location::from_rank_and_file(3, 3) },
+    auto legal_moves_begin = m_legal_moves.begin();
+    while (legal_moves_begin != m_legal_moves.end()) {
+        auto legal_moves_end = std::find_if(legal_moves_begin, m_legal_moves.end(), [&](const Move& move) {
+            return move.origin != legal_moves_begin->origin;
+        });
+
+        auto legal_moves_span = std::span<const Move> { &*legal_moves_begin,
+            static_cast<size_t>(std::distance(legal_moves_begin, legal_moves_end)) };
+        m_legal_moves_by_location[legal_moves_begin->origin.offset] = legal_moves_span;
+        legal_moves_begin = legal_moves_end;
+    }
+}
+
+bool GameState::Analysis::is_check() const { return m_is_check; }
+bool GameState::Analysis::is_checkmate() const { return legal_moves().empty() && is_check(); }
+bool GameState::Analysis::is_stalemate() const { return legal_moves().empty() && !is_check(); }
+
+std::span<const Move> GameState::Analysis::legal_moves() const { return m_legal_moves; }
+std::span<const Move> GameState::Analysis::legal_moves_from(Location location) const
+{
+    return m_legal_moves_by_location[location.offset];
+}
+
+bool GameState::Analysis::is_legal_move(const Move move) const
+{
+    return std::find(m_legal_moves.begin(), m_legal_moves.end(), move) != m_legal_moves.end();
+}
+
+std::span<const uint8_t> GameState::Analysis::threat_map() const { return m_threat_map; }
+
+namespace {
+    using GeneratorFn = std::function<void(std::vector<Move>&, Location, const GameState&)>;
+    extern const std::array<GeneratorFn, 7> pseudo_legal_moves_for_piece;
+}
+
+GameState::Analysis analyze(const GameState& game_state)
+{
+    bool is_check = false;
+    std::vector<Move> pseudo_legal_moves;
+    std::array<uint8_t, Board::cell_count> threat_map {};
+
+    for (auto i = 0; i < Board::cell_count; i++) {
+        Location location(i);
+        Piece piece = game_state.board().piece_at(location);
+        pseudo_legal_moves_for_piece[static_cast<uint8_t>(piece.type())](pseudo_legal_moves, location, game_state);
+
+        if (!piece.exists())
+            continue;
+    }
+
+    return GameState::Analysis { is_check, pseudo_legal_moves, threat_map };
+}
+
+namespace {
+    const std::array<GeneratorFn, 7> pseudo_legal_moves_for_piece = {
+        [](std::vector<Move>& moves, Location location, const GameState&) {
+            // Piece::Type::None
+        },
+        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
+            // Piece::Type::Pawn
+
+            auto one_hop = location + Location::Direction::Down;
+            auto two_hop = location + Location::Direction::Down + Location::Direction::Down;
+
+            if (one_hop.is_valid() && game_state.board().piece_at(one_hop).is_none()) {
+                moves.emplace_back(location, one_hop);
+
+                if (two_hop.is_valid() && game_state.board().piece_at(two_hop).is_none() && location.rank() == 1) {
+                    moves.emplace_back(location, two_hop);
+                }
+            }
+        },
+        [](std::vector<Move>& moves, Location location, const GameState&) {
+            // Piece::Type::Knight
+        },
+        [](std::vector<Move>& moves, Location location, const GameState&) {
+            // Piece::Type::Bishop
+        },
+        [](std::vector<Move>& moves, Location location, const GameState&) {
+            // Piece::Type::Rook
+        },
+        [](std::vector<Move>& moves, Location location, const GameState&) {
+            // Piece::Type::Queen
+        },
+        [](std::vector<Move>& moves, Location location, const GameState&) {
+            // Piece::Type::King
+        },
     };
 }
+
 } // namespace weechess

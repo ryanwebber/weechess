@@ -113,6 +113,11 @@ target_include_directories(${CLI_TARGET}
             "include"
         )
 
+target_compile_definitions(${CLI_TARGET}
+        PRIVATE
+            WEECHESS_LOG_FILE="weechess-cli.log"
+        )
+
 #
 # Tests
 #

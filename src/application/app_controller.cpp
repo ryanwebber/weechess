@@ -165,6 +165,7 @@ ftxui::Component AppController::ViewState::component_in_focus() const
 enum class BoardDecoration {
     None = 0,
     Highlighted,
+    PossibleMove,
 };
 
 ftxui::Element AppController::render()
@@ -196,6 +197,16 @@ ftxui::Element AppController::render()
             decorations[cell.offset() + o] = BoardDecoration::Highlighted;
     }
 
+    // Highlight the possible moves
+    if (highlighted_location.has_value()) {
+        auto moves = m_state.game_state.analysis().legal_moves_from(highlighted_location.value());
+        for (auto& m : moves) {
+            auto cell = bp[m.destination];
+            cell.paint_symbol(u'◆');
+            decorations[cell.offset()] = BoardDecoration::PossibleMove;
+        }
+    }
+
     std::vector<Element> board_rows;
     for (auto r = 0; r < bp.rows(); r++) {
         std::vector<Element> row_cells;
@@ -208,6 +219,9 @@ ftxui::Element AppController::render()
                 break;
             case BoardDecoration::Highlighted:
                 elem |= color(Color::Yellow);
+                break;
+            case BoardDecoration::PossibleMove:
+                elem |= color(Color::Cyan);
                 break;
             }
 

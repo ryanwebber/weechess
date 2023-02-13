@@ -13,6 +13,8 @@ Location::Location(uint8_t rank, uint8_t file)
 {
 }
 
+bool Location::is_valid() const { return offset < Board::cell_count; }
+
 uint8_t Location::file() const { return offset % 8; }
 
 uint8_t Location::rank() const { return offset / 8; }
@@ -39,6 +41,11 @@ std::optional<Location> Location::offset_by(int8_t file_offset, int8_t rank_offs
 
     return Location::from_rank_and_file(rank, file);
 }
+
+Location Location::opposite() const { return Location(Board::cell_count - offset - 1); }
+
+Location Location::operator+(int8_t offset) const { return Location(this->offset + offset); }
+Location Location::operator-(int8_t offset) const { return Location(this->offset - offset); }
 
 Location Location::from_rank_and_file(uint8_t rank, uint8_t file) { return Location(rank, file); }
 

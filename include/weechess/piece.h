@@ -30,7 +30,10 @@ struct Piece {
     bool is(Type type) const;
     bool is(Color color) const;
 
+    Type type() const;
+
     bool exists() const { return (representation & 0b111111) != 0; }
+    bool is_none() const { return !exists(); }
 
     char16_t to_symbol() const;
 
@@ -39,20 +42,4 @@ struct Piece {
 
 Color invert_color(Color);
 
-template <typename T> class PieceMap : public std::array<T, 6> {
-public:
-    using std::array<T, 6>::array;
-
-    T& operator[](Piece::Type type)
-    {
-        auto idx = static_cast<size_t>(type) & 0b111;
-        return std::array<T, 6>::operator[](idx);
-    }
-
-    const T& operator[](Piece::Type type) const
-    {
-        auto idx = static_cast<size_t>(type) & 0b111;
-        return std::array<T, 6>::operator[](idx);
-    }
-};
 }

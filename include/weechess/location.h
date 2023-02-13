@@ -6,9 +6,12 @@
 namespace weechess {
 
 struct Location {
+
     uint8_t offset;
 
     Location(uint8_t offset);
+
+    bool is_valid() const;
 
     uint8_t file() const;
     uint8_t rank() const;
@@ -18,8 +21,24 @@ struct Location {
     std::optional<Location> offset_by(int8_t offset);
     std::optional<Location> offset_by(int8_t file_offset, int8_t rank_offset);
 
+    Location opposite() const;
+
+    Location operator+(int8_t offset) const;
+    Location operator-(int8_t offset) const;
+
     static Location from_rank_and_file(uint8_t rank, uint8_t file);
     static std::optional<Location> from_name(std::string_view);
+
+    enum Direction : int8_t {
+        Up = -8,
+        Down = 8,
+        Left = -1,
+        Right = 1,
+        UpLeft = -9,
+        UpRight = -7,
+        DownLeft = 7,
+        DownRight = 9,
+    };
 
     friend bool operator==(Location const&, Location const&) = default;
 
