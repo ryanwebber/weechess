@@ -192,26 +192,129 @@ namespace {
                 location.offset_by(Location::Down, Location::Right),
             };
 
-            for (auto capture_location : capture_locations) {
+            for (const auto& capture_location : capture_locations) {
                 if (capture_location && game_state.board().piece_at(*capture_location).is(Color::Black)) {
                     moves.emplace_back(location, *capture_location);
                 }
             }
         },
-        [](std::vector<Move>& moves, Location location, const GameState&) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
             // Piece::Type::Knight
+
+            std::array<std::optional<Location>, 8> hop_locations = {
+                location.offset_by(Location::Up, Location::Left * 2),
+                location.offset_by(Location::Up, Location::Right * 2),
+                location.offset_by(Location::Down, Location::Left * 2),
+                location.offset_by(Location::Down, Location::Right * 2),
+                location.offset_by(Location::Left, Location::Up * 2),
+                location.offset_by(Location::Left, Location::Down * 2),
+                location.offset_by(Location::Right, Location::Up * 2),
+                location.offset_by(Location::Right, Location::Down * 2),
+            };
+
+            for (const auto& hop_location : hop_locations) {
+                if (hop_location && !game_state.board().piece_at(*hop_location).is(Color::White)) {
+                    moves.emplace_back(location, *hop_location);
+                }
+            }
         },
-        [](std::vector<Move>& moves, Location location, const GameState&) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
             // Piece::Type::Bishop
+
+            std::array<std::tuple<Location::FileShift, Location::RankShift>, 4> directions = {
+                std::make_tuple(Location::Left, Location::Up),
+                std::make_tuple(Location::Left, Location::Down),
+                std::make_tuple(Location::Right, Location::Up),
+                std::make_tuple(Location::Right, Location::Down),
+            };
+
+            for (const auto& direction : directions) {
+                auto file_shift = std::get<0>(direction);
+                auto rank_shift = std::get<1>(direction);
+                std::optional<Location> offset_location = location;
+                while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
+                    if (game_state.board().piece_at(*offset_location).is(Color::White))
+                        break;
+
+                    moves.emplace_back(location, *offset_location);
+
+                    if (game_state.board().piece_at(*offset_location).is(Color::Black))
+                        break;
+                }
+            }
         },
-        [](std::vector<Move>& moves, Location location, const GameState&) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
             // Piece::Type::Rook
+            std::array<std::tuple<Location::FileShift, Location::RankShift>, 4> directions = {
+                std::make_tuple(Location::Left, Location::RankShift {}),
+                std::make_tuple(Location::Right, Location::RankShift {}),
+                std::make_tuple(Location::FileShift {}, Location::Up),
+                std::make_tuple(Location::FileShift {}, Location::Down),
+            };
+
+            for (const auto& direction : directions) {
+                auto file_shift = std::get<0>(direction);
+                auto rank_shift = std::get<1>(direction);
+                std::optional<Location> offset_location = location;
+                while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
+                    if (game_state.board().piece_at(*offset_location).is(Color::White))
+                        break;
+
+                    moves.emplace_back(location, *offset_location);
+
+                    if (game_state.board().piece_at(*offset_location).is(Color::Black))
+                        break;
+                }
+            }
         },
-        [](std::vector<Move>& moves, Location location, const GameState&) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
             // Piece::Type::Queen
+
+            std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> directions = {
+                std::make_tuple(Location::Left, Location::Up),
+                std::make_tuple(Location::Left, Location::Down),
+                std::make_tuple(Location::Right, Location::Up),
+                std::make_tuple(Location::Right, Location::Down),
+                std::make_tuple(Location::Left, Location::RankShift {}),
+                std::make_tuple(Location::Right, Location::RankShift {}),
+                std::make_tuple(Location::FileShift {}, Location::Up),
+                std::make_tuple(Location::FileShift {}, Location::Down),
+            };
+
+            for (const auto& direction : directions) {
+                auto file_shift = std::get<0>(direction);
+                auto rank_shift = std::get<1>(direction);
+                std::optional<Location> offset_location = location;
+                while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
+                    if (game_state.board().piece_at(*offset_location).is(Color::White))
+                        break;
+
+                    moves.emplace_back(location, *offset_location);
+
+                    if (game_state.board().piece_at(*offset_location).is(Color::Black))
+                        break;
+                }
+            }
         },
-        [](std::vector<Move>& moves, Location location, const GameState&) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
             // Piece::Type::King
+
+            std::array<std::optional<Location>, 8> step_locations = {
+                location.offset_by(Location::Up, Location::Left),
+                location.offset_by(Location::Up, {}),
+                location.offset_by(Location::Up, Location::Right),
+                location.offset_by(Location::Left, {}),
+                location.offset_by(Location::Right, {}),
+                location.offset_by(Location::Down, Location::Left),
+                location.offset_by(Location::Down, {}),
+                location.offset_by(Location::Down, Location::Right),
+            };
+
+            for (const auto& step_location : step_locations) {
+                if (step_location && !game_state.board().piece_at(*step_location).is(Color::White)) {
+                    moves.emplace_back(location, *step_location);
+                }
+            }
         },
     };
 }

@@ -209,7 +209,7 @@ ftxui::Element AppController::render()
         for (auto& m : moves) {
             auto cell = bp[m.destination];
             if (*cell == u' ')
-                cell.paint_symbol(u'◆');
+                cell.paint_symbol(u'•');
             decorations[cell.offset()] = BoardDecoration::PossibleMove;
         }
     }
