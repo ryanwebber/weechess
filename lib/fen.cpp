@@ -6,6 +6,7 @@
 #include <weechess/player_state.h>
 
 #include "fen.h"
+#include "log.h"
 
 namespace weechess::fen {
 constexpr const char* regex_string
@@ -123,7 +124,7 @@ std::optional<GameState> from_fen(std::string_view fen_sv)
     std::string en_passant_target_string(match[groups::en_passant_target].str());
 
     Board board = board_from_fen_fragment(board_string).value();
-    Color turn_to_move = turn_to_move_string == "w" ? Color::White : Color::Black;
+    Color turn_to_move = turn_to_move_string[0] == 'w' ? Color::White : Color::Black;
     PlayerState<CastleRights> castle_rights = castle_rights_from_fen_fragment(castle_rights_string);
     std::optional<Location> en_passant_target = location_from_fen_fragment(en_passant_target_string);
 
@@ -135,15 +136,16 @@ std::optional<Board> board_from_fen_fragment(std::string_view fragment)
     Board::Buffer cells;
     size_t i = 0;
     for (char c : fragment) {
-        std::optional<Piece> piece = piece_from_fen(c);
         if (c == ' ') {
             break;
         } else if (c == '/') {
             continue;
         } else if (std::isdigit(c)) {
             i += (c - '0');
-        } else if (piece.has_value()) {
-            cells[i] = piece.value();
+        } else if (auto piece = piece_from_fen(c)) {
+            Location l(i);
+            Location corrected = Location::from_rank_and_file(7 - l.rank(), l.file());
+            cells[corrected.offset] = piece.value();
             i++;
         } else {
             return std::nullopt;

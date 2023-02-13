@@ -1,11 +1,29 @@
 #pragma once
 
+#include <functional>
 #include <optional>
 #include <string>
 
 namespace weechess {
 
 struct Location {
+
+    struct FileShift {
+        int value;
+
+        constexpr FileShift operator*(uint8_t n) const { return FileShift { value * n }; }
+    };
+
+    struct RankShift {
+        int value;
+
+        constexpr RankShift operator*(uint8_t n) const { return RankShift { value * n }; }
+    };
+
+    constexpr static FileShift Left = FileShift { -1 };
+    constexpr static FileShift Right = FileShift { 1 };
+    constexpr static RankShift Up = RankShift { -1 };
+    constexpr static RankShift Down = RankShift { 1 };
 
     uint8_t offset;
 
@@ -18,27 +36,21 @@ struct Location {
 
     std::string to_string() const;
 
-    std::optional<Location> offset_by(int8_t offset);
-    std::optional<Location> offset_by(int8_t file_offset, int8_t rank_offset);
+    std::optional<Location> offset_by(int8_t offset) const;
+    std::optional<Location> offset_by(FileShift = {}, RankShift = {}) const;
+    std::optional<Location> offset_by(RankShift rs = {}, FileShift fs = {}) const { return this->offset_by(fs, rs); }
 
-    Location opposite() const;
+    template <typename F> void with_offset(FileShift fs = {}, RankShift rs = {}, F f = {}) const
+    {
+        if (auto location = this->offset_by(fs, rs)) {
+            f(*location);
+        }
+    }
 
-    Location operator+(int8_t offset) const;
-    Location operator-(int8_t offset) const;
+    Location chromatic_inverse() const;
 
     static Location from_rank_and_file(uint8_t rank, uint8_t file);
     static std::optional<Location> from_name(std::string_view);
-
-    enum Direction : int8_t {
-        Up = -8,
-        Down = 8,
-        Left = -1,
-        Right = 1,
-        UpLeft = -9,
-        UpRight = -7,
-        DownLeft = 7,
-        DownRight = 9,
-    };
 
     friend bool operator==(Location const&, Location const&) = default;
 

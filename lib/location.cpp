@@ -21,7 +21,7 @@ uint8_t Location::rank() const { return offset / 8; }
 
 std::string Location::to_string() const { return std::string(1, 'a' + file()) + std::to_string(rank() + 1); }
 
-std::optional<Location> Location::offset_by(int8_t offset)
+std::optional<Location> Location::offset_by(int8_t offset) const
 {
     if (offset >= Board::cell_count) {
         return std::nullopt;
@@ -30,10 +30,10 @@ std::optional<Location> Location::offset_by(int8_t offset)
     return Location(offset);
 }
 
-std::optional<Location> Location::offset_by(int8_t file_offset, int8_t rank_offset)
+std::optional<Location> Location::offset_by(FileShift fs, RankShift rs) const
 {
-    int8_t file = file_offset + this->file();
-    int8_t rank = rank_offset + this->rank();
+    auto file = fs.value + this->file();
+    auto rank = rs.value + this->rank();
 
     if (file < 0 || file > 7 || rank < 0 || rank > 7) {
         return std::nullopt;
@@ -42,10 +42,7 @@ std::optional<Location> Location::offset_by(int8_t file_offset, int8_t rank_offs
     return Location::from_rank_and_file(rank, file);
 }
 
-Location Location::opposite() const { return Location(Board::cell_count - offset - 1); }
-
-Location Location::operator+(int8_t offset) const { return Location(this->offset + offset); }
-Location Location::operator-(int8_t offset) const { return Location(this->offset - offset); }
+Location Location::chromatic_inverse() const { return Location(Board::cell_count - offset - 1); }
 
 Location Location::from_rank_and_file(uint8_t rank, uint8_t file) { return Location(rank, file); }
 

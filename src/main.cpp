@@ -11,6 +11,7 @@
 #include "application/app_controller.h"
 #include "console.h"
 #include "log.h"
+#include "string_utils.h"
 
 class AppDelegate : public AppController::Delegate,
                     public Console::Display,
@@ -39,6 +40,8 @@ public:
     }
 
     void on_execute_command(AppController&, std::string_view command) override { m_console.execute(command); }
+
+    void on_debug_event(AppController& controller) override { }
 
     void clear() override
     {

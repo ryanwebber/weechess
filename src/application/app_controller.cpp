@@ -46,6 +46,12 @@ AppController::AppController()
     auto renderer = ftxui::Renderer([&] { return render(); });
 
     renderer |= ftxui::CatchEvent([&](ftxui::Event event) {
+        if (event == ftxui::Event::Character('?')) {
+            if (auto delegate = m_delegate.lock())
+                delegate->on_debug_event(*this);
+            return true;
+        }
+
         // Pass any events to the current component in focus
         // if it can handle them
         auto current_focus = m_view_state.component_in_focus();
@@ -70,19 +76,19 @@ AppController::AppController()
 
             // Handle navigation around the board with arrows
             if (event == ftxui::Event::ArrowLeft) {
-                if (auto l = m_view_state.highlighted_location.offset_by(-1, 0))
+                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Left))
                     m_view_state.highlighted_location = l.value();
                 return true;
             } else if (event == ftxui::Event::ArrowRight) {
-                if (auto l = m_view_state.highlighted_location.offset_by(1, 0))
+                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Right))
                     m_view_state.highlighted_location = l.value();
                 return true;
             } else if (event == ftxui::Event::ArrowUp) {
-                if (auto l = m_view_state.highlighted_location.offset_by(0, -1))
+                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Up))
                     m_view_state.highlighted_location = l.value();
                 return true;
             } else if (event == ftxui::Event::ArrowDown) {
-                if (auto l = m_view_state.highlighted_location.offset_by(0, 1))
+                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Down))
                     m_view_state.highlighted_location = l.value();
                 return true;
             }
@@ -202,7 +208,8 @@ ftxui::Element AppController::render()
         auto moves = m_state.game_state.analysis().legal_moves_from(highlighted_location.value());
         for (auto& m : moves) {
             auto cell = bp[m.destination];
-            cell.paint_symbol(u'◆');
+            if (*cell == u' ')
+                cell.paint_symbol(u'◆');
             decorations[cell.offset()] = BoardDecoration::PossibleMove;
         }
     }

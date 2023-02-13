@@ -1,4 +1,5 @@
 #include "fen.h"
+#include "log.h"
 #include <weechess/game_state.h>
 
 namespace weechess {
@@ -61,13 +62,13 @@ GameState GameState::as_monochromatic(Color perspective) const
 
     auto en_passant_target = m_en_passant_target;
     if (en_passant_target) {
-        en_passant_target = en_passant_target->opposite();
+        en_passant_target = en_passant_target->chromatic_inverse();
     }
 
     Board board;
     for (auto i = 0; i < Board::cell_count; i++) {
         Location l(i);
-        board.set_piece_at(l.opposite(), m_board.piece_at(l));
+        board.set_piece_at(l.chromatic_inverse(), m_board.piece_at(l).chromatic_inverse());
     }
 
     return GameState { board, perspective, castle_rights, en_passant_target };
@@ -144,17 +145,24 @@ namespace {
 
 GameState::Analysis analyze(const GameState& game_state)
 {
+    auto mono_game_state = game_state.as_monochromatic(Color::White);
+
     bool is_check = false;
     std::vector<Move> pseudo_legal_moves;
     std::array<uint8_t, Board::cell_count> threat_map {};
 
     for (auto i = 0; i < Board::cell_count; i++) {
         Location location(i);
-        Piece piece = game_state.board().piece_at(location);
-        pseudo_legal_moves_for_piece[static_cast<uint8_t>(piece.type())](pseudo_legal_moves, location, game_state);
+        Piece piece = mono_game_state.board().piece_at(location);
+        if (piece.exists() && piece.is(Color::White))
+            pseudo_legal_moves_for_piece[static_cast<uint8_t>(piece.type())](
+                pseudo_legal_moves, location, mono_game_state);
+    }
 
-        if (!piece.exists())
-            continue;
+    if (game_state.turn_to_move() != mono_game_state.turn_to_move()) {
+        for (auto& move : pseudo_legal_moves) {
+            move = move.chromatic_inverse();
+        }
     }
 
     return GameState::Analysis { is_check, pseudo_legal_moves, threat_map };
@@ -168,14 +176,25 @@ namespace {
         [](std::vector<Move>& moves, Location location, const GameState& game_state) {
             // Piece::Type::Pawn
 
-            auto one_hop = location + Location::Direction::Down;
-            auto two_hop = location + Location::Direction::Down + Location::Direction::Down;
+            auto one_hop = location.offset_by(Location::Down);
+            auto two_hop = location.offset_by(Location::Down * 2);
 
-            if (one_hop.is_valid() && game_state.board().piece_at(one_hop).is_none()) {
-                moves.emplace_back(location, one_hop);
+            if (one_hop && game_state.board().piece_at(*one_hop).is_none()) {
+                moves.emplace_back(location, *one_hop);
 
-                if (two_hop.is_valid() && game_state.board().piece_at(two_hop).is_none() && location.rank() == 1) {
-                    moves.emplace_back(location, two_hop);
+                if (two_hop && game_state.board().piece_at(*two_hop).is_none() && location.rank() == 1) {
+                    moves.emplace_back(location, *two_hop);
+                }
+            }
+
+            std::array<std::optional<Location>, 2> capture_locations = {
+                location.offset_by(Location::Down, Location::Left),
+                location.offset_by(Location::Down, Location::Right),
+            };
+
+            for (auto capture_location : capture_locations) {
+                if (capture_location && game_state.board().piece_at(*capture_location).is(Color::Black)) {
+                    moves.emplace_back(location, *capture_location);
                 }
             }
         },

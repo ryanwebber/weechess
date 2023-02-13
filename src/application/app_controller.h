@@ -39,6 +39,8 @@ public:
     public:
         virtual void on_should_redraw(AppController&) = 0;
         virtual void on_execute_command(AppController&, std::string_view command) = 0;
+
+        virtual void on_debug_event(AppController&) {};
     };
 
     AppController();

@@ -16,6 +16,8 @@ struct Move {
         : origin(origin)
         , destination(destination) {};
 
+    Move chromatic_inverse() const { return Move(origin.chromatic_inverse(), destination.chromatic_inverse()); }
+
     friend bool operator==(Move const&, Move const&) = default;
 };
 
