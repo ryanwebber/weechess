@@ -82,7 +82,7 @@ private:
         // Chess board stuff
         ftxui::Box chess_window_bounds;
         weechess::Location highlighted_location { 0 };
-        std::optional<weechess::Location> selected_location {};
+        std::optional<weechess::Location> pinned_location {};
 
         ftxui::Component component_in_focus() const;
 

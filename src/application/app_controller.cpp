@@ -66,7 +66,22 @@ AppController::AppController()
                 int file = 8 * (event.mouse().x - xmin) / width;
                 int rank = 8 * (event.mouse().y - ymin) / height;
                 if (rank < 8 && file < 8) {
+                    m_view_state.focus = ViewState::Focus::ChessWindow;
                     m_view_state.highlighted_location = weechess::Location::from_rank_and_file(rank, file);
+
+                    if (m_view_state.pinned_location.has_value()) {
+                        if (auto delegate = m_delegate.lock()) {
+                            auto from = m_view_state.pinned_location.value();
+                            auto to = m_view_state.highlighted_location;
+                            auto move_cmd = "move " + from.to_string() + " " + to.to_string();
+                            m_state.command_output.push_back({ "> " + move_cmd, CommandOutput::Type::Command });
+                            delegate->on_execute_command(*this, move_cmd);
+                            m_view_state.pinned_location = {};
+                        }
+                    } else {
+                        m_view_state.pinned_location = m_view_state.highlighted_location;
+                    }
+
                     return true;
                 }
             }
@@ -83,9 +98,11 @@ AppController::AppController()
 
         // Handle events that will switch focus between components
         if (event == ftxui::Event::Escape) {
+            m_view_state.pinned_location = {};
             m_view_state.focus = ViewState::Focus::ChessWindow;
             return true;
         } else if (event == ftxui::Event::Character('/')) {
+            m_view_state.pinned_location = {};
             m_view_state.focus = ViewState::Focus::CommandWindow;
             return true;
         }
@@ -125,6 +142,24 @@ AppController::AppController()
                         = weechess::Location::from_rank_and_file(m_view_state.highlighted_location.rank(), c - 'a');
                     return true;
                 }
+            }
+
+            // Handle pressing enter to pin the location
+            if (event == ftxui::Event::Return) {
+                if (m_view_state.pinned_location.has_value()) {
+                    if (auto delegate = m_delegate.lock()) {
+                        auto from = m_view_state.pinned_location.value();
+                        auto to = m_view_state.highlighted_location;
+                        auto move_cmd = "move " + from.to_string() + " " + to.to_string();
+                        m_state.command_output.push_back({ "> " + move_cmd, CommandOutput::Type::Command });
+                        delegate->on_execute_command(*this, move_cmd);
+                        m_view_state.pinned_location = {};
+                    }
+                } else {
+                    m_view_state.pinned_location = m_view_state.highlighted_location;
+                }
+
+                return true;
             }
         }
         case ViewState::Focus::CommandWindow: {
@@ -191,6 +226,7 @@ ftxui::Component AppController::ViewState::component_in_focus() const
 enum class BoardDecoration {
     None = 0,
     Highlighted,
+    Pinned,
     PossibleMove,
 };
 
@@ -201,6 +237,13 @@ ftxui::Element AppController::render()
     std::optional<weechess::Location> highlighted_location;
     if (m_view_state.focus == ViewState::Focus::ChessWindow) {
         highlighted_location = m_view_state.highlighted_location;
+    }
+
+    if (m_view_state.pinned_location.has_value()
+        && !m_state.game_state.board()
+                .piece_at(m_view_state.pinned_location.value())
+                .is(m_state.game_state.turn_to_move())) {
+        m_view_state.pinned_location = {};
     }
 
     BoardPrinter bp;
@@ -215,6 +258,12 @@ ftxui::Element AppController::render()
         }
     }
 
+    // Highlight the pinned cell
+    if (m_view_state.pinned_location.has_value()) {
+        auto cell = bp[m_view_state.pinned_location.value()];
+        decorations[cell.offset()] = BoardDecoration::Pinned;
+    }
+
     // Highlight the selected cell
     if (highlighted_location.has_value()) {
         auto cell = bp[highlighted_location.value()];
@@ -223,9 +272,12 @@ ftxui::Element AppController::render()
             decorations[cell.offset() + o] = BoardDecoration::Highlighted;
     }
 
+    auto move_to_show_hints
+        = m_view_state.pinned_location.has_value() ? m_view_state.pinned_location : highlighted_location;
+
     // Highlight the possible moves
-    if (highlighted_location.has_value()) {
-        auto moves = m_state.game_state.analysis().legal_moves_from(highlighted_location.value());
+    if (move_to_show_hints.has_value()) {
+        auto moves = m_state.game_state.analysis().legal_moves_from(move_to_show_hints.value());
         for (auto& m : moves) {
             auto cell = bp[m.destination];
             if (*cell == u' ')
@@ -245,7 +297,15 @@ ftxui::Element AppController::render()
             case BoardDecoration::None:
                 break;
             case BoardDecoration::Highlighted:
-                elem |= color(Color::Yellow);
+                if (m_view_state.pinned_location.has_value()) {
+                    elem |= color(Color::Magenta);
+                } else {
+                    elem |= color(Color::Yellow);
+                }
+
+                break;
+            case BoardDecoration::Pinned:
+                elem |= color(Color::Magenta);
                 break;
             case BoardDecoration::PossibleMove:
                 elem |= color(Color::Cyan);
