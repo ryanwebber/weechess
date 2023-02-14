@@ -93,7 +93,6 @@ int main(int argc, char* argv[])
     auto delegate = AppDelegate::make_shared(controller, screen.ExitLoopClosure());
     controller.set_delegate(delegate);
 
-    // Bootstrap a new game here
     auto gamestate = weechess::GameState::new_game();
     controller.update_state([&](auto& state) {
         state.game_state = gamestate;

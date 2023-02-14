@@ -53,6 +53,30 @@ AppController::AppController()
             return true;
         }
 
+        auto try_perform_move = [&](const weechess::Move& move) {
+            auto possible_moves = m_state.game_state.analysis().legal_moves_from(move.origin);
+            if (std::find(possible_moves.begin(), possible_moves.end(), move) == possible_moves.end()) {
+
+                // User selected a different piece of their own. We obviously can't move there, so
+                // instead we select the new piece
+                if (m_state.game_state.board().piece_at(move.destination).is(m_state.game_state.turn_to_move())) {
+                    m_view_state.pinned_location = move.destination;
+                } else {
+                    m_view_state.pinned_location = {};
+                }
+
+                return;
+            }
+
+            if (auto delegate = m_delegate.lock()) {
+                auto move_cmd = "move " + move.origin.to_string() + " " + move.destination.to_string();
+                m_state.command_output.push_back({ "> " + move_cmd, CommandOutput::Type::Command });
+                delegate->on_execute_command(*this, move_cmd);
+            }
+
+            m_view_state.pinned_location = {};
+        };
+
         if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Left
             && event.mouse().motion == ftxui::Mouse::Motion::Released) {
             if (m_view_state.chess_window_bounds.Contain(event.mouse().x, event.mouse().y)) {
@@ -70,14 +94,9 @@ AppController::AppController()
                     m_view_state.highlighted_location = weechess::Location::from_rank_and_file(rank, file);
 
                     if (m_view_state.pinned_location.has_value()) {
-                        if (auto delegate = m_delegate.lock()) {
-                            auto from = m_view_state.pinned_location.value();
-                            auto to = m_view_state.highlighted_location;
-                            auto move_cmd = "move " + from.to_string() + " " + to.to_string();
-                            m_state.command_output.push_back({ "> " + move_cmd, CommandOutput::Type::Command });
-                            delegate->on_execute_command(*this, move_cmd);
-                            m_view_state.pinned_location = {};
-                        }
+                        auto from = m_view_state.pinned_location.value();
+                        auto to = m_view_state.highlighted_location;
+                        try_perform_move(weechess::Move(from, to));
                     } else {
                         m_view_state.pinned_location = m_view_state.highlighted_location;
                     }
@@ -147,14 +166,9 @@ AppController::AppController()
             // Handle pressing enter to pin the location
             if (event == ftxui::Event::Return) {
                 if (m_view_state.pinned_location.has_value()) {
-                    if (auto delegate = m_delegate.lock()) {
-                        auto from = m_view_state.pinned_location.value();
-                        auto to = m_view_state.highlighted_location;
-                        auto move_cmd = "move " + from.to_string() + " " + to.to_string();
-                        m_state.command_output.push_back({ "> " + move_cmd, CommandOutput::Type::Command });
-                        delegate->on_execute_command(*this, move_cmd);
-                        m_view_state.pinned_location = {};
-                    }
+                    auto from = m_view_state.pinned_location.value();
+                    auto to = m_view_state.highlighted_location;
+                    try_perform_move(weechess::Move(from, to));
                 } else {
                     m_view_state.pinned_location = m_view_state.highlighted_location;
                 }
