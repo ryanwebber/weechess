@@ -69,7 +69,19 @@ public:
         });
     }
 
-    bool cmd_move_piece(weechess::Move move) override { return false; }
+    bool cmd_move_piece(weechess::Move move) override
+    {
+        if (m_controller.state().game_state.analysis().is_legal_move(move)) {
+            m_controller.update_state([&](AppController::State& state) {
+                state.move_history.push_back({ state.game_state.board().piece_at(move.origin), move.destination });
+                state.game_state = weechess::GameState::by_performing_move(state.game_state, move, nullptr).value();
+                return true;
+            });
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     static std::shared_ptr<AppDelegate> make_shared(AppController& controller, std::function<void()> exit_closure)
     {
