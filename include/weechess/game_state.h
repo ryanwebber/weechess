@@ -19,7 +19,7 @@ struct MoveDetail {
 
 struct CastleRights {
     bool can_castle_kingside;
-    bool can_castle_queensize;
+    bool can_castle_queenside;
 
     bool has_rights() const;
 

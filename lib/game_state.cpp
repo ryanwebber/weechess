@@ -6,7 +6,7 @@ namespace weechess {
 
 GameState::Analysis analyze(const GameState& game_state);
 
-bool CastleRights::has_rights() const { return can_castle_kingside || can_castle_queensize; }
+bool CastleRights::has_rights() const { return can_castle_kingside || can_castle_queenside; }
 
 CastleRights CastleRights::none() { return CastleRights { false, false }; }
 
@@ -139,7 +139,7 @@ namespace {
         std::vector<Move>&, Location, const GameState&, const std::array<uint8_t, Board::cell_count>&)>;
     extern const std::array<GeneratorFn, 7> pseudo_legal_moves_for_piece;
 
-    using ThreatmappingFn = std::function<void(std::array<uint8_t, Board::cell_count>&, Location, const Board&)>;
+    using ThreatmappingFn = std::function<void(Location, const Board&, const std::function<void(Location)>&)>;
     extern const std::array<ThreatmappingFn, 7> threat_map_for_piece;
 }
 
@@ -154,9 +154,14 @@ GameState::Analysis analyze(const GameState& game_state)
     std::array<uint8_t, Board::cell_count> threat_map {};
     for (auto i = 0; i < Board::cell_count; i++) {
         Location location(i);
+        threat_map[i] = 0;
         Piece piece = mono_game_state.board().piece_at(location);
-        if (piece.exists() && piece.is(Color::Black))
-            threat_map_for_piece[static_cast<uint8_t>(piece.type())](threat_map, location, mono_game_state.board());
+        if (piece.exists()) {
+            threat_map_for_piece[static_cast<uint8_t>(piece.type())](
+                location, mono_game_state.board(), [&](Location threat_location) {
+                    threat_map[threat_location.offset] |= static_cast<uint8_t>(piece.color());
+                });
+        }
     }
 
     // 2. Compute the pseudo-legal moves from the white pieces
@@ -182,20 +187,22 @@ namespace {
 
     void slide_from(Location location,
         const Board& board,
+        const Color& color_to_move,
         std::span<const std::tuple<Location::FileShift, Location::RankShift>> steps,
         std::function<void(Location)> f)
     {
+        auto opponent_color = invert_color(color_to_move);
         for (const auto& step : steps) {
             auto file_shift = std::get<0>(step);
             auto rank_shift = std::get<1>(step);
             std::optional<Location> offset_location = location;
             while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
-                if (board.piece_at(*offset_location).is(Color::White))
+                if (board.piece_at(*offset_location).is(color_to_move))
                     break;
 
                 f(*offset_location);
 
-                if (board.piece_at(*offset_location).is(Color::Black))
+                if (board.piece_at(*offset_location).is(opponent_color))
                     break;
             }
         }
@@ -214,7 +221,7 @@ namespace {
         }
     }
 
-    std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> pawn_jumps = {
+    std::array<std::tuple<Location::FileShift, Location::RankShift>, 2> pawn_jumps = {
         std::make_tuple(Location::Left, Location::Down),
         std::make_tuple(Location::Right, Location::Down),
     };
@@ -298,19 +305,19 @@ namespace {
         },
         [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Bishop
-            slide_from(location, game_state.board(), bishop_slides, [&](Location slide_location) {
+            slide_from(location, game_state.board(), Color::White, bishop_slides, [&](Location slide_location) {
                 moves.emplace_back(location, slide_location);
             });
         },
         [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Rook
-            slide_from(location, game_state.board(), rook_slides, [&](Location slide_location) {
+            slide_from(location, game_state.board(), Color::White, rook_slides, [&](Location slide_location) {
                 moves.emplace_back(location, slide_location);
             });
         },
         [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Queen
-            slide_from(location, game_state.board(), queen_slides, [&](Location slide_location) {
+            slide_from(location, game_state.board(), Color::White, queen_slides, [&](Location slide_location) {
                 moves.emplace_back(location, slide_location);
             });
         },
@@ -319,45 +326,98 @@ namespace {
             jump_from(location, game_state.board(), king_jumps, [&](Location hop_location) {
                 moves.emplace_back(location, hop_location);
             });
+
+            // Castling
+
+            auto is_any_occupied = [&](std::span<const Location> locations) {
+                for (const auto& location : locations) {
+                    if (game_state.board().piece_at(location).exists()) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+
+            auto is_any_attacked = [&](std::span<const Location> locations) {
+                for (const auto& location : locations) {
+                    if ((threat_map[location.offset] & static_cast<uint8_t>(Color::Black)) != 0) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+
+            // Fast way we can look if white is in check
+            if ((threat_map[location.offset] & static_cast<uint8_t>(Color::Black)) == 0) {
+                if (game_state.castle_rights()[Color::White].can_castle_kingside) {
+                    std::array<Location, 2> castle_through_squares = {
+                        Location::from_name("f1").value(),
+                        Location::from_name("g1").value(),
+                    };
+
+                    if (!is_any_attacked(castle_through_squares) && !is_any_occupied(castle_through_squares)) {
+                        moves.emplace_back(location, Location::from_name("g1").value());
+                    }
+                }
+
+                if (game_state.castle_rights()[Color::White].can_castle_queenside) {
+                    std::array<Location, 2> castle_through_squares = {
+                        Location::from_name("d1").value(),
+                        Location::from_name("c1").value(),
+                    };
+
+                    std::array<Location, 3> castle_between_squares = {
+                        Location::from_name("d1").value(),
+                        Location::from_name("c1").value(),
+                        Location::from_name("b1").value(),
+                    };
+
+                    if (!is_any_attacked(castle_through_squares) && !is_any_occupied(castle_between_squares)) {
+                        moves.emplace_back(location, Location::from_name("c1").value());
+                    }
+                }
+            }
         },
     };
 
     const std::array<ThreatmappingFn, 7> threat_map_for_piece = {
-        [](std::array<uint8_t, Board::cell_count>&, Location, const Board&) {
+        [](Location, const Board&, const auto& f) {
             // Piece::Type::None
         },
-        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+        [](Location location, const Board& board, const auto& f) {
             // Piece::Type::Pawn
-            jump_from(
-                location, board, pawn_jumps, [&](Location hop_location) { threatmap[hop_location.offset] = true; });
+            if (board.piece_at(location).is(Color::White)) {
+                jump_from(location, board, pawn_jumps, f);
+            } else {
+                std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> black_pawn_jumps = {
+                    std::make_tuple(Location::Left, Location::Up),
+                    std::make_tuple(Location::Right, Location::Up),
+                };
+
+                jump_from(location, board, black_pawn_jumps, f);
+            }
         },
-        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+        [](Location location, const Board& board, const auto& f) {
             // Piece::Type::Knight
-            jump_from(
-                location, board, knight_jumps, [&](Location hop_location) { threatmap[hop_location.offset] = true; });
+            jump_from(location, board, knight_jumps, f);
         },
-        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+        [](Location location, const Board& board, const auto& f) {
             // Piece::Type::Bishop
-            slide_from(location, board, bishop_slides, [&](Location slide_location) {
-                threatmap[slide_location.offset] = true;
-            });
+            slide_from(location, board, board.piece_at(location).color(), bishop_slides, f);
         },
-        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+        [](Location location, const Board& board, const auto& f) {
             // Piece::Type::Rook
-            slide_from(location, board, rook_slides, [&](Location slide_location) {
-                threatmap[slide_location.offset] = true;
-            });
+            slide_from(location, board, board.piece_at(location).color(), rook_slides, f);
         },
-        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+        [](Location location, const Board& board, const auto& f) {
             // Piece::Type::Queen
-            slide_from(location, board, queen_slides, [&](Location slide_location) {
-                threatmap[slide_location.offset] = true;
-            });
+            slide_from(location, board, board.piece_at(location).color(), queen_slides, f);
         },
-        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+        [](Location location, const Board& board, const auto& f) {
             // Piece::Type::King
-            jump_from(
-                location, board, king_jumps, [&](Location hop_location) { threatmap[hop_location.offset] = true; });
+            jump_from(location, board, king_jumps, f);
         },
     };
 }

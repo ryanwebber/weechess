@@ -81,11 +81,11 @@ std::string to_fen(const GameState& game_state)
     if (castle_rights[Color::White].has_rights() || castle_rights[Color::Black].has_rights()) {
         if (castle_rights[Color::White].can_castle_kingside)
             fen_str += 'K';
-        if (castle_rights[Color::White].can_castle_queensize)
+        if (castle_rights[Color::White].can_castle_queenside)
             fen_str += 'Q';
         if (castle_rights[Color::Black].can_castle_kingside)
             fen_str += 'k';
-        if (castle_rights[Color::Black].can_castle_queensize)
+        if (castle_rights[Color::Black].can_castle_queenside)
             fen_str += 'q';
     } else {
         fen_str += "-";
@@ -167,10 +167,10 @@ PlayerState<CastleRights> castle_rights_from_fen_fragment(std::string_view fragm
             castle_rights[Color::Black].can_castle_kingside = true;
             break;
         case white_queen:
-            castle_rights[Color::White].can_castle_queensize = true;
+            castle_rights[Color::White].can_castle_queenside = true;
             break;
         case black_queen:
-            castle_rights[Color::Black].can_castle_queensize = true;
+            castle_rights[Color::Black].can_castle_queenside = true;
             break;
         }
     }
