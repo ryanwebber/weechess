@@ -6,6 +6,7 @@
 #include <ftxui/dom/table.hpp>
 
 #include "../board_printer.h"
+#include "../log.h"
 #include "../string_utils.h"
 #include "app_controller.h"
 
@@ -50,6 +51,25 @@ AppController::AppController()
             if (auto delegate = m_delegate.lock())
                 delegate->on_debug_event(*this);
             return true;
+        }
+
+        if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Left
+            && event.mouse().motion == ftxui::Mouse::Motion::Released) {
+            if (m_view_state.chess_window_bounds.Contain(event.mouse().x, event.mouse().y)) {
+                auto xmin = m_view_state.chess_window_bounds.x_min;
+                auto ymin = m_view_state.chess_window_bounds.y_min;
+                auto xmax = m_view_state.chess_window_bounds.x_max;
+                auto ymax = m_view_state.chess_window_bounds.y_max;
+                auto width = xmax - xmin;
+                auto height = ymax - ymin;
+
+                int file = 8 * (event.mouse().x - xmin) / width;
+                int rank = 8 * (event.mouse().y - ymin) / height;
+                if (rank < 8 && file < 8) {
+                    m_view_state.highlighted_location = weechess::Location::from_rank_and_file(rank, file);
+                    return true;
+                }
+            }
         }
 
         // Pass any events to the current component in focus
@@ -301,25 +321,27 @@ ftxui::Element AppController::render()
         command_history.push_back(p);
     }
 
-    auto document = vbox({ hbox({
-                               vtext(rank_labels) | hcenter | size(WIDTH, EQUAL, 3) | dim,
-                               vbox({
-                                   vbox(std::move(board_rows)),
-                                   text(file_labels) | hcenter | dim,
-                               }),
-                               filler() | size(WIDTH, EQUAL, 2),
-                               window(text("History") | hcenter, table.Render() | size(WIDTH, EQUAL, 23)),
-                               window(text("Logs") | hcenter, text("")) | flex,
-                           }),
+    // clang-format off
+    auto document = vbox({
+        hbox({
+            vtext(rank_labels) | hcenter | size(WIDTH, EQUAL, 3) | dim,
+            vbox({
+                vbox(std::move(board_rows)) | reflect(m_view_state.chess_window_bounds),
+                text(file_labels) | hcenter | dim,
+            }),
+            filler() | size(WIDTH, EQUAL, 2),
+            window(text("History") | hcenter, table.Render() | size(WIDTH, EQUAL, 23)),
+            window(text("Logs") | hcenter, text("")) | flex,
+        }),
         vbox({
             vbox({ command_history }) | focusPositionRelative(0, 1) | yframe | flex,
             hbox({
-                /* Command input */
                 text("> ") | prompt_decoration,
                 command_input | flex,
             }),
-        }) | flex
-            | border });
+        }) | flex | border
+    });
+    // clang-format on
 
     return document;
 }

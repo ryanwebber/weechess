@@ -40,8 +40,8 @@ public:
     std::u16string_view str() const;
     std::u16string_view row_str(size_t row) const;
 
-    constexpr size_t rows() const { return row_char_count; }
-    constexpr size_t cols() const { return col_char_count; }
+    static constexpr size_t rows() { return row_char_count; }
+    static constexpr size_t cols() { return col_char_count; }
 
     Cell cell_at(size_t row, size_t col);
     Cell operator[](weechess::Location);

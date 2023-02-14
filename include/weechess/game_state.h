@@ -33,7 +33,6 @@ public:
     private:
         bool m_is_check;
         std::vector<Move> m_legal_moves;
-        std::array<uint8_t, Board::cell_count> m_threat_map;
         std::array<std::span<const Move>, Board::cell_count> m_legal_moves_by_location;
 
     public:
@@ -41,7 +40,7 @@ public:
          * Note: the legal moves vector must contain contiguous moves from the same origin,
          * so that as an optimization we can quickly iterate over moves from each location.
          */
-        Analysis(bool is_check, std::vector<Move> legal_moves, std::array<uint8_t, Board::cell_count> threat_map);
+        Analysis(bool is_check, std::vector<Move> legal_moves);
 
         bool is_check() const;
         bool is_checkmate() const;
@@ -51,8 +50,6 @@ public:
 
         std::span<const Move> legal_moves() const;
         std::span<const Move> legal_moves_from(const Location) const;
-
-        std::span<const uint8_t> threat_map() const;
     };
 
     GameState();

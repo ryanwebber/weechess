@@ -101,11 +101,9 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
     return GameState { board, invert_color(game_state.turn_to_move()), game_state.castle_rights(), {} };
 }
 
-GameState::Analysis::Analysis(
-    bool is_check, std::vector<Move> legal_moves, std::array<uint8_t, Board::cell_count> threat_map)
+GameState::Analysis::Analysis(bool is_check, std::vector<Move> legal_moves)
     : m_is_check(is_check)
     , m_legal_moves(legal_moves)
-    , m_threat_map(threat_map)
     , m_legal_moves_by_location({})
 {
     auto legal_moves_begin = m_legal_moves.begin();
@@ -136,11 +134,13 @@ bool GameState::Analysis::is_legal_move(const Move move) const
     return std::find(m_legal_moves.begin(), m_legal_moves.end(), move) != m_legal_moves.end();
 }
 
-std::span<const uint8_t> GameState::Analysis::threat_map() const { return m_threat_map; }
-
 namespace {
-    using GeneratorFn = std::function<void(std::vector<Move>&, Location, const GameState&)>;
+    using GeneratorFn = std::function<void(
+        std::vector<Move>&, Location, const GameState&, const std::array<uint8_t, Board::cell_count>&)>;
     extern const std::array<GeneratorFn, 7> pseudo_legal_moves_for_piece;
+
+    using ThreatmappingFn = std::function<void(std::array<uint8_t, Board::cell_count>&, Location, const Board&)>;
+    extern const std::array<ThreatmappingFn, 7> threat_map_for_piece;
 }
 
 GameState::Analysis analyze(const GameState& game_state)
@@ -149,31 +149,128 @@ GameState::Analysis analyze(const GameState& game_state)
 
     bool is_check = false;
     std::vector<Move> pseudo_legal_moves;
-    std::array<uint8_t, Board::cell_count> threat_map {};
 
+    // 1. Compute the threat map from the black pieces
+    std::array<uint8_t, Board::cell_count> threat_map {};
+    for (auto i = 0; i < Board::cell_count; i++) {
+        Location location(i);
+        Piece piece = mono_game_state.board().piece_at(location);
+        if (piece.exists() && piece.is(Color::Black))
+            threat_map_for_piece[static_cast<uint8_t>(piece.type())](threat_map, location, mono_game_state.board());
+    }
+
+    // 2. Compute the pseudo-legal moves from the white pieces
     for (auto i = 0; i < Board::cell_count; i++) {
         Location location(i);
         Piece piece = mono_game_state.board().piece_at(location);
         if (piece.exists() && piece.is(Color::White))
             pseudo_legal_moves_for_piece[static_cast<uint8_t>(piece.type())](
-                pseudo_legal_moves, location, mono_game_state);
+                pseudo_legal_moves, location, mono_game_state, threat_map);
     }
 
+    // 3. Flip the board back to the original perspective
     if (game_state.turn_to_move() != mono_game_state.turn_to_move()) {
         for (auto& move : pseudo_legal_moves) {
             move = move.chromatic_inverse();
         }
     }
 
-    return GameState::Analysis { is_check, pseudo_legal_moves, threat_map };
+    return GameState::Analysis { is_check, pseudo_legal_moves };
 }
 
 namespace {
+
+    void slide_from(Location location,
+        const Board& board,
+        std::span<const std::tuple<Location::FileShift, Location::RankShift>> steps,
+        std::function<void(Location)> f)
+    {
+        for (const auto& step : steps) {
+            auto file_shift = std::get<0>(step);
+            auto rank_shift = std::get<1>(step);
+            std::optional<Location> offset_location = location;
+            while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
+                if (board.piece_at(*offset_location).is(Color::White))
+                    break;
+
+                f(*offset_location);
+
+                if (board.piece_at(*offset_location).is(Color::Black))
+                    break;
+            }
+        }
+    }
+
+    void jump_from(Location location,
+        const Board& board,
+        std::span<const std::tuple<Location::FileShift, Location::RankShift>> offsets,
+        std::function<void(Location)> f)
+    {
+        for (const auto& hop : offsets) {
+            std::optional hop_location = location.offset_by(std::get<0>(hop), std::get<1>(hop));
+            if (hop_location && !board.piece_at(*hop_location).is(Color::White)) {
+                f(*hop_location);
+            }
+        }
+    }
+
+    std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> pawn_jumps = {
+        std::make_tuple(Location::Left, Location::Down),
+        std::make_tuple(Location::Right, Location::Down),
+    };
+
+    std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> knight_jumps = {
+        std::make_tuple(Location::Left * 2, Location::Down),
+        std::make_tuple(Location::Left * 2, Location::Up),
+        std::make_tuple(Location::Right * 2, Location::Down),
+        std::make_tuple(Location::Right * 2, Location::Up),
+        std::make_tuple(Location::Left, Location::Down * 2),
+        std::make_tuple(Location::Left, Location::Up * 2),
+        std::make_tuple(Location::Right, Location::Down * 2),
+        std::make_tuple(Location::Right, Location::Up * 2),
+    };
+
+    std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> king_jumps = {
+        std::make_tuple(Location::Left, Location::Down),
+        std::make_tuple(Location::Left, Location::Up),
+        std::make_tuple(Location::Right, Location::Down),
+        std::make_tuple(Location::Right, Location::Up),
+        std::make_tuple(Location::Left, Location::RankShift {}),
+        std::make_tuple(Location::Right, Location::RankShift {}),
+        std::make_tuple(Location::FileShift {}, Location::Down),
+        std::make_tuple(Location::FileShift {}, Location::Up),
+    };
+
+    std::array<std::tuple<Location::FileShift, Location::RankShift>, 4> bishop_slides = {
+        std::make_tuple(Location::Left, Location::Up),
+        std::make_tuple(Location::Left, Location::Down),
+        std::make_tuple(Location::Right, Location::Up),
+        std::make_tuple(Location::Right, Location::Down),
+    };
+
+    std::array<std::tuple<Location::FileShift, Location::RankShift>, 4> rook_slides = {
+        std::make_tuple(Location::Left, Location::RankShift {}),
+        std::make_tuple(Location::Right, Location::RankShift {}),
+        std::make_tuple(Location::FileShift {}, Location::Up),
+        std::make_tuple(Location::FileShift {}, Location::Down),
+    };
+
+    std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> queen_slides = {
+        std::make_tuple(Location::Left, Location::Up),
+        std::make_tuple(Location::Left, Location::Down),
+        std::make_tuple(Location::Right, Location::Up),
+        std::make_tuple(Location::Right, Location::Down),
+        std::make_tuple(Location::Left, Location::RankShift {}),
+        std::make_tuple(Location::Right, Location::RankShift {}),
+        std::make_tuple(Location::FileShift {}, Location::Up),
+        std::make_tuple(Location::FileShift {}, Location::Down),
+    };
+
     const std::array<GeneratorFn, 7> pseudo_legal_moves_for_piece = {
-        [](std::vector<Move>& moves, Location location, const GameState&) {
+        [](std::vector<Move>& moves, Location location, const GameState&, const auto& threat_map) {
             // Piece::Type::None
         },
-        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Pawn
 
             auto one_hop = location.offset_by(Location::Down);
@@ -187,134 +284,80 @@ namespace {
                 }
             }
 
-            std::array<std::optional<Location>, 2> capture_locations = {
-                location.offset_by(Location::Down, Location::Left),
-                location.offset_by(Location::Down, Location::Right),
-            };
-
-            for (const auto& capture_location : capture_locations) {
-                if (capture_location && game_state.board().piece_at(*capture_location).is(Color::Black)) {
-                    moves.emplace_back(location, *capture_location);
+            jump_from(location, game_state.board(), pawn_jumps, [&](Location hop_location) {
+                if (game_state.board().piece_at(hop_location).is(Color::Black)) {
+                    moves.emplace_back(location, hop_location);
                 }
-            }
+            });
         },
-        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Knight
-
-            std::array<std::optional<Location>, 8> hop_locations = {
-                location.offset_by(Location::Up, Location::Left * 2),
-                location.offset_by(Location::Up, Location::Right * 2),
-                location.offset_by(Location::Down, Location::Left * 2),
-                location.offset_by(Location::Down, Location::Right * 2),
-                location.offset_by(Location::Left, Location::Up * 2),
-                location.offset_by(Location::Left, Location::Down * 2),
-                location.offset_by(Location::Right, Location::Up * 2),
-                location.offset_by(Location::Right, Location::Down * 2),
-            };
-
-            for (const auto& hop_location : hop_locations) {
-                if (hop_location && !game_state.board().piece_at(*hop_location).is(Color::White)) {
-                    moves.emplace_back(location, *hop_location);
-                }
-            }
+            jump_from(location, game_state.board(), knight_jumps, [&](Location hop_location) {
+                moves.emplace_back(location, hop_location);
+            });
         },
-        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Bishop
-
-            std::array<std::tuple<Location::FileShift, Location::RankShift>, 4> directions = {
-                std::make_tuple(Location::Left, Location::Up),
-                std::make_tuple(Location::Left, Location::Down),
-                std::make_tuple(Location::Right, Location::Up),
-                std::make_tuple(Location::Right, Location::Down),
-            };
-
-            for (const auto& direction : directions) {
-                auto file_shift = std::get<0>(direction);
-                auto rank_shift = std::get<1>(direction);
-                std::optional<Location> offset_location = location;
-                while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
-                    if (game_state.board().piece_at(*offset_location).is(Color::White))
-                        break;
-
-                    moves.emplace_back(location, *offset_location);
-
-                    if (game_state.board().piece_at(*offset_location).is(Color::Black))
-                        break;
-                }
-            }
+            slide_from(location, game_state.board(), bishop_slides, [&](Location slide_location) {
+                moves.emplace_back(location, slide_location);
+            });
         },
-        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Rook
-            std::array<std::tuple<Location::FileShift, Location::RankShift>, 4> directions = {
-                std::make_tuple(Location::Left, Location::RankShift {}),
-                std::make_tuple(Location::Right, Location::RankShift {}),
-                std::make_tuple(Location::FileShift {}, Location::Up),
-                std::make_tuple(Location::FileShift {}, Location::Down),
-            };
-
-            for (const auto& direction : directions) {
-                auto file_shift = std::get<0>(direction);
-                auto rank_shift = std::get<1>(direction);
-                std::optional<Location> offset_location = location;
-                while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
-                    if (game_state.board().piece_at(*offset_location).is(Color::White))
-                        break;
-
-                    moves.emplace_back(location, *offset_location);
-
-                    if (game_state.board().piece_at(*offset_location).is(Color::Black))
-                        break;
-                }
-            }
+            slide_from(location, game_state.board(), rook_slides, [&](Location slide_location) {
+                moves.emplace_back(location, slide_location);
+            });
         },
-        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::Queen
-
-            std::array<std::tuple<Location::FileShift, Location::RankShift>, 8> directions = {
-                std::make_tuple(Location::Left, Location::Up),
-                std::make_tuple(Location::Left, Location::Down),
-                std::make_tuple(Location::Right, Location::Up),
-                std::make_tuple(Location::Right, Location::Down),
-                std::make_tuple(Location::Left, Location::RankShift {}),
-                std::make_tuple(Location::Right, Location::RankShift {}),
-                std::make_tuple(Location::FileShift {}, Location::Up),
-                std::make_tuple(Location::FileShift {}, Location::Down),
-            };
-
-            for (const auto& direction : directions) {
-                auto file_shift = std::get<0>(direction);
-                auto rank_shift = std::get<1>(direction);
-                std::optional<Location> offset_location = location;
-                while ((offset_location = offset_location->offset_by(file_shift, rank_shift))) {
-                    if (game_state.board().piece_at(*offset_location).is(Color::White))
-                        break;
-
-                    moves.emplace_back(location, *offset_location);
-
-                    if (game_state.board().piece_at(*offset_location).is(Color::Black))
-                        break;
-                }
-            }
+            slide_from(location, game_state.board(), queen_slides, [&](Location slide_location) {
+                moves.emplace_back(location, slide_location);
+            });
         },
-        [](std::vector<Move>& moves, Location location, const GameState& game_state) {
+        [](std::vector<Move>& moves, Location location, const GameState& game_state, const auto& threat_map) {
             // Piece::Type::King
+            jump_from(location, game_state.board(), king_jumps, [&](Location hop_location) {
+                moves.emplace_back(location, hop_location);
+            });
+        },
+    };
 
-            std::array<std::optional<Location>, 8> step_locations = {
-                location.offset_by(Location::Up, Location::Left),
-                location.offset_by(Location::Up, {}),
-                location.offset_by(Location::Up, Location::Right),
-                location.offset_by(Location::Left, {}),
-                location.offset_by(Location::Right, {}),
-                location.offset_by(Location::Down, Location::Left),
-                location.offset_by(Location::Down, {}),
-                location.offset_by(Location::Down, Location::Right),
-            };
-
-            for (const auto& step_location : step_locations) {
-                if (step_location && !game_state.board().piece_at(*step_location).is(Color::White)) {
-                    moves.emplace_back(location, *step_location);
-                }
-            }
+    const std::array<ThreatmappingFn, 7> threat_map_for_piece = {
+        [](std::array<uint8_t, Board::cell_count>&, Location, const Board&) {
+            // Piece::Type::None
+        },
+        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+            // Piece::Type::Pawn
+            jump_from(
+                location, board, pawn_jumps, [&](Location hop_location) { threatmap[hop_location.offset] = true; });
+        },
+        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+            // Piece::Type::Knight
+            jump_from(
+                location, board, knight_jumps, [&](Location hop_location) { threatmap[hop_location.offset] = true; });
+        },
+        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+            // Piece::Type::Bishop
+            slide_from(location, board, bishop_slides, [&](Location slide_location) {
+                threatmap[slide_location.offset] = true;
+            });
+        },
+        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+            // Piece::Type::Rook
+            slide_from(location, board, rook_slides, [&](Location slide_location) {
+                threatmap[slide_location.offset] = true;
+            });
+        },
+        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+            // Piece::Type::Queen
+            slide_from(location, board, queen_slides, [&](Location slide_location) {
+                threatmap[slide_location.offset] = true;
+            });
+        },
+        [](std::array<uint8_t, Board::cell_count>& threatmap, Location location, const Board& board) {
+            // Piece::Type::King
+            jump_from(
+                location, board, king_jumps, [&](Location hop_location) { threatmap[hop_location.offset] = true; });
         },
     };
 }

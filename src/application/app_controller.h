@@ -80,6 +80,7 @@ private:
         CommandInput command_input;
 
         // Chess board stuff
+        ftxui::Box chess_window_bounds;
         weechess::Location highlighted_location { 0 };
         std::optional<weechess::Location> selected_location {};
 
