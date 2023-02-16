@@ -12,6 +12,8 @@ enum class Color : uint8_t {
 
 struct Piece {
 
+    constexpr static uint8_t type_mask = 0b111;
+    constexpr static uint8_t piece_map_size = 7;
     enum class Type : uint8_t {
         None = 0,
         Pawn = 1,
@@ -33,12 +35,14 @@ struct Piece {
     Type type() const;
     Color color() const;
 
-    bool exists() const { return (representation & 0b111) != 0; }
+    bool exists() const { return (representation & type_mask) != 0; }
     bool is_none() const { return !exists(); }
 
     char16_t to_symbol() const;
 
     Piece chromatic_inverse() const;
+
+    bool operator==(const Piece& other) const { return representation == other.representation; }
 
     static Piece none() { return Piece(); }
 };

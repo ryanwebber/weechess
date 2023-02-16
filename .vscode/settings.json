@@ -84,6 +84,8 @@
         "set": "cpp",
         "stack": "cpp",
         "algorithm": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "filesystem": "cpp",
+        "__memory": "cpp"
     }
 }

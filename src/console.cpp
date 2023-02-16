@@ -70,8 +70,8 @@ public:
             auto origin_sn = parser.get<std::string>("from");
             auto destination_sn = parser.get<std::string>("to");
 
-            auto origin = weechess::Location::from_name(origin_sn);
-            auto destination = weechess::Location::from_name(destination_sn);
+            auto origin = weechess::Location::from_string(origin_sn);
+            auto destination = weechess::Location::from_string(destination_sn);
 
             if (!origin) {
                 if (auto display = console.display().lock()) {

@@ -7,9 +7,9 @@
 #include <vector>
 
 #include <weechess/board.h>
+#include <weechess/color_map.h>
 #include <weechess/move.h>
 #include <weechess/piece.h>
-#include <weechess/player_state.h>
 
 namespace weechess {
 
@@ -50,18 +50,22 @@ public:
 
         std::span<const Move> legal_moves() const;
         std::span<const Move> legal_moves_from(const Location) const;
+
+        static Analysis from(const GameState&);
     };
 
     GameState();
     GameState(Board board,
         Color turn_to_move,
-        PlayerState<CastleRights> castle_rights,
+        ColorMap<CastleRights> castle_rights,
         std::optional<Location> en_passant_target);
 
     const Board& board() const;
     const Color& turn_to_move() const;
-    const PlayerState<CastleRights>& castle_rights() const;
+    const ColorMap<CastleRights>& castle_rights() const;
     const std::optional<Location>& en_passant_target() const;
+
+    std::span<const Location> piece_locations() const;
 
     const Analysis& analysis() const;
 
@@ -77,10 +81,15 @@ private:
     Board m_board;
     Color m_turn_to_move;
 
-    PlayerState<CastleRights> m_castle_rights;
+    ColorMap<CastleRights> m_castle_rights;
     std::optional<Location> m_en_passant_target;
 
+    std::vector<Location> m_piece_locations;
     std::optional<Analysis> m_analysis;
+
+    bool m_analysis_disabled { false };
+
+    friend class Analysis;
 };
 
 }

@@ -1,9 +1,9 @@
 #include <iostream>
 #include <regex>
 
+#include <weechess/color_map.h>
 #include <weechess/location.h>
 #include <weechess/piece.h>
-#include <weechess/player_state.h>
 
 #include "fen.h"
 #include "log.h"
@@ -35,7 +35,7 @@ constexpr char black_queen = 'q';
 constexpr char black_king = 'k';
 
 std::optional<Board> board_from_fen_fragment(std::string_view fragment);
-PlayerState<CastleRights> castle_rights_from_fen_fragment(std::string_view fragment);
+ColorMap<CastleRights> castle_rights_from_fen_fragment(std::string_view fragment);
 std::optional<Location> location_from_fen_fragment(std::string_view fragment);
 std::optional<Piece> piece_from_fen(char c);
 std::optional<char> piece_to_fen(const Piece& piece);
@@ -111,11 +111,11 @@ std::optional<GameState> from_fen(std::string_view fen_sv)
     auto flags = std::regex_constants::match_default;
 
     if (!std::regex_match(fen_sv.begin(), fen_sv.end(), match, re, flags)) {
-        return std::nullopt;
+        return {};
     }
 
     if (match.size() != groups::count) {
-        return std::nullopt;
+        return {};
     }
 
     std::string board_string(match[groups::board].str());
@@ -125,7 +125,7 @@ std::optional<GameState> from_fen(std::string_view fen_sv)
 
     Board board = board_from_fen_fragment(board_string).value();
     Color turn_to_move = turn_to_move_string[0] == 'w' ? Color::White : Color::Black;
-    PlayerState<CastleRights> castle_rights = castle_rights_from_fen_fragment(castle_rights_string);
+    ColorMap<CastleRights> castle_rights = castle_rights_from_fen_fragment(castle_rights_string);
     std::optional<Location> en_passant_target = location_from_fen_fragment(en_passant_target_string);
 
     return GameState(board, turn_to_move, castle_rights, en_passant_target);
@@ -133,7 +133,7 @@ std::optional<GameState> from_fen(std::string_view fen_sv)
 
 std::optional<Board> board_from_fen_fragment(std::string_view fragment)
 {
-    Board::Buffer cells;
+    Board::Buffer cells {};
     size_t i = 0;
     for (char c : fragment) {
         if (c == ' ') {
@@ -148,16 +148,16 @@ std::optional<Board> board_from_fen_fragment(std::string_view fragment)
             cells[corrected.offset] = piece.value();
             i++;
         } else {
-            return std::nullopt;
+            return {};
         }
     }
 
     return Board(cells);
 }
 
-PlayerState<CastleRights> castle_rights_from_fen_fragment(std::string_view fragment)
+ColorMap<CastleRights> castle_rights_from_fen_fragment(std::string_view fragment)
 {
-    PlayerState<CastleRights> castle_rights(CastleRights::none());
+    ColorMap<CastleRights> castle_rights(CastleRights::none());
     for (char c : fragment) {
         switch (c) {
         case white_king:
@@ -188,7 +188,7 @@ std::optional<Location> location_from_fen_fragment(std::string_view fragment)
     char rank = fragment[1];
 
     if (file < 'a' || file > 'h' || rank < '1' || rank > '8') {
-        return std::nullopt;
+        return {};
     }
 
     return Location::from_rank_and_file(rank - '1', file - 'a');
@@ -222,7 +222,7 @@ std::optional<Piece> piece_from_fen(char c)
     case black_king:
         return Piece(Piece::Type::King, Color::Black);
     default:
-        return std::nullopt;
+        return {};
     }
 }
 
@@ -241,7 +241,7 @@ std::optional<char> piece_to_fen(const Piece& piece)
     } else if (piece.is(Piece::Type::King)) {
         return piece.is(Color::White) ? white_king : black_king;
     } else {
-        return std::nullopt;
+        return {};
     }
 }
 }

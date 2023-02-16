@@ -97,6 +97,11 @@ public:
 
 int main(int argc, char* argv[])
 {
+    // TODO: parse agruments
+    if (argc > 1) {
+        return 0;
+    }
+
     log::init_logging();
 
     auto screen = ftxui::ScreenInteractive::Fullscreen();
