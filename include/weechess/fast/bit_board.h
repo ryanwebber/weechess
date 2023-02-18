@@ -2,26 +2,14 @@
 
 #include <bitset>
 #include <cassert>
+#include <iostream>
 #include <span>
 #include <tuple>
 #include <weechess/location.h>
 
-namespace weechess {
+namespace weechess::fast {
 
 class BitBoard {
-private:
-    // clang-format off
-    const uint64_t debruijn64index[64] = {
-        63,  0, 58,  1, 59, 47, 53,  2,
-        60, 39, 48, 27, 54, 33, 42,  3,
-        61, 51, 37, 40, 49, 18, 28, 20,
-        55, 30, 34, 11, 43, 14, 22,  4,
-        62, 57, 46, 52, 38, 26, 32, 41,
-        50, 36, 17, 19, 29, 10, 13, 21,
-        56, 45, 25, 31, 35, 16,  9, 12,
-        44, 24, 15,  8, 23,  7,  6,  5
-    };
-    // clang-format on
 public:
     using Data = std::bitset<64>;
 
@@ -40,6 +28,8 @@ public:
     constexpr BitBoard operator|(const BitBoard& other) const { return BitBoard(m_data | other.m_data); }
     constexpr BitBoard operator&(const BitBoard& other) const { return BitBoard(m_data & other.m_data); }
     constexpr BitBoard operator~() const { return BitBoard(~m_data); }
+    constexpr void operator|=(const BitBoard& other) { m_data |= other.m_data; }
+    constexpr void operator&=(const BitBoard& other) { m_data &= other.m_data; }
 
     constexpr bool all() const { return m_data.all(); }
     constexpr bool any() const { return m_data.any(); }
@@ -47,14 +37,32 @@ public:
 
     constexpr Data data() const { return m_data; }
 
-    constexpr Location lsb() const
+    constexpr std::optional<Location> msb() const
     {
-        static_assert(sizeof(uint64_t) == sizeof(unsigned long long));
-        constexpr uint64_t magic = 0x07EDD5E59A4E28C2ULL;
-        uint64_t value = m_data.to_ullong();
-        uint8_t offset = debruijn64index[((value & -value) * magic) >> 58];
-        return Location(offset);
+        if (m_data.none())
+            return {};
+
+        return 63 - __builtin_clzll(m_data.to_ullong());
     }
+    constexpr std::optional<Location> lsb() const
+    {
+        if (m_data.none())
+            return {};
+
+        return __builtin_ffsll(m_data.to_ulong()) - 1;
+    }
+
+    constexpr std::optional<Location> pop_lsb()
+    {
+        if (auto lsb = this->lsb()) {
+            m_data &= m_data.to_ullong() - 1;
+            return *lsb;
+        }
+
+        return {};
+    }
+
+    constexpr uint8_t count_set_bits() const { return __builtin_popcountll(m_data.to_ullong()); }
 
     static constexpr BitBoard from(std::span<const Location> locations)
     {
@@ -66,8 +74,14 @@ public:
         return BitBoard(data);
     }
 
+    static constexpr BitBoard empty() { return BitBoard(); }
+
 private:
     Data m_data;
 };
 
+constexpr bool operator==(const BitBoard& lhs, const BitBoard& rhs) { return lhs.data() == rhs.data(); }
+constexpr bool operator!=(const BitBoard& lhs, const BitBoard& rhs) { return lhs.data() != rhs.data(); }
+
+std::ostream& operator<<(std::ostream&, const BitBoard&);
 }

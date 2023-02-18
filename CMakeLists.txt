@@ -8,6 +8,10 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "Preventing an in-tree built.")
 endif()
 
+if (CMAKE_CXX_BYTE_ORDER STREQUAL "BIG_ENDIAN")
+    message(FATAL_ERROR "Big endian systems are not supported due to bit twiddling performance optimizations.")
+endif()
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The default build type." FORCE)
 endif()
@@ -65,12 +69,12 @@ set(LIB_LOGGING_ENABLED ON)
 
 set(LIB_TARGET weechess)
 set(LIB_SOURCES
-        lib/bit_board.cpp
         lib/board.cpp
+        lib/fast/bit_board.cpp
+        lib/fast/move_generator.cpp
         lib/fen.cpp
         lib/game_state.cpp
         lib/location.cpp
-        lib/move_generator.cpp
         lib/piece.cpp
         )
 

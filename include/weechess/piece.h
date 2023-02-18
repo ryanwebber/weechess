@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <optional>
 #include <string>
 
@@ -12,8 +13,8 @@ enum class Color : uint8_t {
 
 struct Piece {
 
-    constexpr static uint8_t type_mask = 0b111;
-    constexpr static uint8_t piece_map_size = 7;
+    constexpr static uint8_t type_mask = 0b00111;
+    constexpr static uint8_t color_mask = 0b11000;
     enum class Type : uint8_t {
         None = 0,
         Pawn = 1,
@@ -22,6 +23,15 @@ struct Piece {
         Rook = 4,
         Queen = 5,
         King = 6,
+    };
+
+    static constexpr std::array<Type, 6> types = {
+        Type::Pawn,
+        Type::Knight,
+        Type::Bishop,
+        Type::Rook,
+        Type::Queen,
+        Type::King,
     };
 
     uint8_t representation;

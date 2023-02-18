@@ -3,11 +3,15 @@
 #include <array>
 #include <optional>
 
-#include <weechess/bit_board.h>
+#include <weechess/fast/bit_board.h>
 #include <weechess/game_state.h>
 #include <weechess/move.h>
 
-namespace weechess {
+namespace weechess::fast {
+
+namespace internal {
+    BitBoard rook_attacks(Location, BitBoard blockers);
+}
 
 class MoveGenerator {
 public:
@@ -15,12 +19,14 @@ public:
         Color turn_to_move;
         ColorMap<CastleRights> castle_rights;
         std::optional<Location> en_passant_target;
-        std::array<ColorMap<BitBoard>, 7> occupancy;
+        std::array<BitBoard, Piece::type_mask | Piece::color_mask> occupancy;
 
-        Request(Color turn_to_move, ColorMap<CastleRights> castle_rights);
+        Request();
 
-        void add_piece(const Piece&, const Location&);
+        void set_turn_to_move(Color color);
         void set_en_passant_target(const Location& location);
+        void set_castle_rights(Color color, CastleRights rights);
+        void add_piece(const Piece&, const Location&);
     };
 
     struct Result { };

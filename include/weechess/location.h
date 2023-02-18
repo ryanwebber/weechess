@@ -22,8 +22,8 @@ struct Location {
 
     constexpr static FileShift Left = FileShift { -1 };
     constexpr static FileShift Right = FileShift { 1 };
-    constexpr static RankShift Up = RankShift { -1 };
-    constexpr static RankShift Down = RankShift { 1 };
+    constexpr static RankShift Up = RankShift { 1 };
+    constexpr static RankShift Down = RankShift { -1 };
 
     uint8_t offset;
 

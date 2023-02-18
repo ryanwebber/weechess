@@ -6,10 +6,6 @@ namespace weechess {
 
 bool CastleRights::has_rights() const { return can_castle_kingside || can_castle_queenside; }
 
-CastleRights CastleRights::none() { return CastleRights { false, false }; }
-
-CastleRights CastleRights::all() { return CastleRights { true, true }; }
-
 GameState::GameState()
     : m_turn_to_move(Color::White)
     , m_castle_rights(CastleRights::all())

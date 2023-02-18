@@ -18,13 +18,13 @@ struct MoveDetail {
 };
 
 struct CastleRights {
-    bool can_castle_kingside;
-    bool can_castle_queenside;
+    bool can_castle_kingside { true };
+    bool can_castle_queenside { true };
 
     bool has_rights() const;
 
-    static CastleRights none();
-    static CastleRights all();
+    static constexpr CastleRights none() { return { false, false }; };
+    static constexpr CastleRights all() { return { true, true }; };
 };
 
 class GameState {
