@@ -32,8 +32,8 @@ struct Location {
 
     bool is_valid() const;
 
-    uint8_t file() const;
-    uint8_t rank() const;
+    constexpr uint8_t file() const { return offset % 8; }
+    constexpr uint8_t rank() const { return offset / 8; }
 
     std::string to_string() const;
 

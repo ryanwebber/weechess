@@ -11,7 +11,7 @@ namespace {
     const std::array<BitBoard, 64> k_king_attacks = comptime::compute_king_attacks();
 
     const comptime::RookMagicTable k_rook_magic_table = comptime::compute_rook_magic_table();
-    // const comptime::BishopMagicTable k_bishop_magic_table = comptime::compute_bishop_magic_table();
+    const comptime::BishopMagicTable k_bishop_magic_table = comptime::compute_bishop_magic_table();
 
     const std::array<BitBoard, 64> k_rook_masks = comptime::compute_rook_slide_masks();
     const std::array<BitBoard, 64> k_bishop_masks = comptime::compute_bishop_slide_masks();
@@ -37,10 +37,19 @@ namespace {
         static BitBoard rook_attacks(Location location, BitBoard blockers)
         {
             blockers &= k_rook_masks[location.offset];
-            auto blockers_ull = blockers.data().to_ullong();
-            auto magic_ull = comptime::rook_magics[location.offset].data().to_ullong();
+            auto blockers_ull = blockers.data();
+            auto magic_ull = comptime::rook_magics[location.offset].data();
             auto key = (blockers_ull * magic_ull) >> (64 - comptime::rook_magic_indexes[location.offset]);
             return k_rook_magic_table[location.offset][key];
+        }
+
+        static BitBoard bishop_attacks(Location location, BitBoard blockers)
+        {
+            blockers &= k_bishop_masks[location.offset];
+            auto blockers_ull = blockers.data();
+            auto magic_ull = comptime::bishop_magics[location.offset].data();
+            auto key = (blockers_ull * magic_ull) >> (64 - comptime::bishop_magic_indexes[location.offset]);
+            return k_bishop_magic_table[location.offset][key];
         }
     };
 }
@@ -71,6 +80,10 @@ MoveGenerator::Result MoveGenerator::execute(const Request& request) const
 
 namespace internal {
     BitBoard rook_attacks(Location location, BitBoard blockers) { return Analyzer::rook_attacks(location, blockers); }
+    BitBoard bishop_attacks(Location location, BitBoard blockers)
+    {
+        return Analyzer::bishop_attacks(location, blockers);
+    }
 }
 
 } // namespace weechess

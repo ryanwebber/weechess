@@ -159,6 +159,21 @@ TEST_CASE("Comptime unoptimized rook slides with blockers", "[movegen]")
         Location::C6,
     };
 
+    /*
+
+    8  .  .  .  .  .  .  .  .
+    7  .  .  .  .  .  .  .  .
+    6  .  .  B  .  .  .  .  .
+    5  .  .  .  .  .  .  .  .
+    4  .  .  .  .  .  .  .  .
+    3  .  .  X  .  .  .  B  .
+    2  .  .  B  .  .  .  .  .
+    1  B  .  .  .  .  .  .  .
+
+       A  B  C  D  E  F  G  H
+
+    */
+
     auto blockers = BitBoard::from(other_pieces);
     auto actual_moves = comptime::compute_rook_attacks_unoptimized(location, blockers);
 
@@ -202,10 +217,92 @@ TEST_CASE("Optimized rook move sanity check", "[movegen]")
             occupancy.set(((noise ^ i) >> x) % 64);
         }
 
-        occupancy.reset(l);
+        occupancy.unset(l);
+
+        INFO("BitBoard at " << l.to_string() << " with occupancy (" << occupancy.data() << "ULL)\n" << occupancy);
 
         auto slow_results = comptime::compute_rook_attacks_unoptimized(l, occupancy);
         auto fast_results = internal::rook_attacks(l, occupancy);
+
+        CHECK(slow_results == fast_results);
+    }
+}
+
+TEST_CASE("Comptime unoptimized bishop slides with blockers", "[movegen]")
+{
+    using namespace weechess;
+    using namespace weechess::fast;
+
+    auto location = Location::C3;
+    std::array<Location, 3> other_pieces = {
+        Location::B4,
+        Location::A1,
+        Location::F6,
+    };
+
+    /*
+
+    8  .  .  .  .  .  .  .  .
+    7  .  .  .  .  .  .  .  .
+    6  .  .  .  .  .  B  .  .
+    5  .  .  .  .  .  .  .  .
+    4  .  B  .  .  .  .  .  .
+    3  .  .  X  .  .  .  .  .
+    2  .  .  .  .  .  .  .  .
+    1  B  .  .  .  .  .  .  .
+
+       A  B  C  D  E  F  G  H
+
+    */
+
+    auto blockers = BitBoard::from(other_pieces);
+    auto actual_moves = comptime::compute_bishop_attacks_unoptimized(location, blockers);
+
+    std::array<Location, 8> expectated = {
+        // Top Right
+        Location::D4,
+        Location::E5,
+        Location::F6,
+
+        // Down Right
+        Location::D2,
+        Location::E1,
+
+        // Down Left
+        Location::B2,
+        Location::A1,
+
+        // Top Left
+        Location::B4,
+    };
+
+    CHECK(actual_moves == BitBoard::from(expectated));
+}
+
+TEST_CASE("Optimized bishop move sanity check", "[movegen]")
+{
+    using namespace weechess;
+    using namespace weechess::fast;
+
+    auto noise = 0xa2f8df60487ed0b0ULL;
+
+    for (auto i = 0; i < 64; i++) {
+        Location l(i);
+
+        BitBoard occupancy;
+        for (auto x = 0; x < 10; x++) {
+            // Try to create slightly different board
+            // layouts for each case, setting 10-ish bits
+            occupancy.set(((noise ^ i) >> x) % 64);
+        }
+
+        occupancy.unset(l);
+
+        INFO("BitBoard at " << l.to_string() << " with occupancy (" << occupancy.data() << "ULL)\n" << occupancy);
+
+        auto slow_results = comptime::compute_bishop_attacks_unoptimized(l, occupancy);
+        auto fast_results = internal::bishop_attacks(l, occupancy);
+
         CHECK(slow_results == fast_results);
     }
 }

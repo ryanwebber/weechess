@@ -5,11 +5,7 @@ namespace weechess {
 
 bool Location::is_valid() const { return offset < Board::cell_count; }
 
-uint8_t Location::file() const { return offset % 8; }
-
-uint8_t Location::rank() const { return offset / 8; }
-
-std::string Location::to_string() const { return std::string(1, 'a' + file()) + std::to_string(rank() + 1); }
+std::string Location::to_string() const { return std::string(1, 'A' + file()) + std::to_string(rank() + 1); }
 
 Location Location::chromatic_inverse() const { return Location(Board::cell_count - offset - 1); }
 

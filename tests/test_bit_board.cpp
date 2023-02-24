@@ -10,31 +10,29 @@ TEST_CASE("Least significant bit math", "[bitboard]")
     // Random bits to use as noise in the test data,
     // just to make sure the LSB calculations aren't
     // thrown off by bits in the upper half of the data.
-    constexpr std::array<std::bitset<64>, 8> noise = {
+    constexpr std::array<BitBoard, 8> noise = {
         // clang-format off
-        0x344e7f44823d5b0dULL,
-        0xe85af31ee6822221ULL,
-        0x0000000000000000ULL,
-        0x893262894290bf34ULL,
-        0xbffc28938dee062fULL,
-        0xa2f8df60487ed0b0ULL,
-        0xd4f6b5bd124db82cULL,
-        0xb97e27a6682fc0d7ULL,
+        BitBoard(0x344e7f44823d5b0dULL),
+        BitBoard(0xe85af31ee6822221ULL),
+        BitBoard(0x0000000000000000ULL),
+        BitBoard(0x893262894290bf34ULL),
+        BitBoard(0xbffc28938dee062fULL),
+        BitBoard(0xa2f8df60487ed0b0ULL),
+        BitBoard(0xd4f6b5bd124db82cULL),
+        BitBoard(0xb97e27a6682fc0d7ULL),
         // clang-format on
     };
 
     for (auto i = 0; i < 63; i++) {
-        std::bitset<64> mask(~((1ULL << i) - 1));
-        std::bitset<64> lsb = 0;
+        BitBoard mask(~((1ULL << i) - 1));
+        BitBoard lsb = 0;
         lsb.set(i);
 
         // Construct data with random data in the upper bits, such that
         // the final data has the lsb at the ith position (x is random noise):
         // 0bxxx...xxxxx100000...0
         //               <-- i -->
-        std::bitset<64> data((lsb | noise[i % noise.size()]) & mask);
-
-        auto bb = BitBoard(data);
+        BitBoard bb = ((lsb | noise[i % noise.size()]) & mask);
         CHECK(bb.lsb()->offset == i);
     }
 

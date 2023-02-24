@@ -11,6 +11,7 @@ namespace weechess::fast {
 
 namespace internal {
     BitBoard rook_attacks(Location, BitBoard blockers);
+    BitBoard bishop_attacks(Location, BitBoard blockers);
 }
 
 class MoveGenerator {
