@@ -36,15 +36,6 @@ char16_t Piece::to_symbol() const
     }
 }
 
-Piece Piece::chromatic_inverse() const
-{
-    if (exists()) {
-        return Piece(type(), invert_color(color()));
-    } else {
-        return *this;
-    }
-}
-
 Color invert_color(Color color)
 {
     if (color == Color::White) {

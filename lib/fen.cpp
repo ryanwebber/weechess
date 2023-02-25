@@ -43,7 +43,7 @@ std::optional<char> piece_to_fen(const Piece& piece);
 std::string to_fen(const GameState& game_state)
 {
 
-    auto cells = game_state.board().cells();
+    auto cells = game_state.board().to_array();
     auto turn_to_move = game_state.turn_to_move();
     auto castle_rights = game_state.castle_rights();
     auto en_passant_target = game_state.en_passant_target();
@@ -133,7 +133,7 @@ std::optional<GameState> from_fen(std::string_view fen_sv)
 
 std::optional<Board> board_from_fen_fragment(std::string_view fragment)
 {
-    Board::Buffer cells {};
+    Board::Builder builder;
     size_t i = 0;
     for (char c : fragment) {
         if (c == ' ') {
@@ -145,14 +145,14 @@ std::optional<Board> board_from_fen_fragment(std::string_view fragment)
         } else if (auto piece = piece_from_fen(c)) {
             Location l(i);
             Location corrected = Location::from_rank_and_file(7 - l.rank(), l.file());
-            cells[corrected.offset] = piece.value();
+            builder[corrected.offset] = piece.value();
             i++;
         } else {
             return {};
         }
     }
 
-    return Board(cells);
+    return builder.build();
 }
 
 ColorMap<CastleRights> castle_rights_from_fen_fragment(std::string_view fragment)

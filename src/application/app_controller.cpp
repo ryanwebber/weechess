@@ -54,13 +54,13 @@ AppController::AppController()
         }
 
         auto try_perform_move = [&](const weechess::Move& move) {
-            auto possible_moves = m_state.game_state.analysis().legal_moves_from(move.origin);
+            auto possible_moves = m_state.game_state.move_set().legal_moves_from(move.start_location());
             if (std::find(possible_moves.begin(), possible_moves.end(), move) == possible_moves.end()) {
 
                 // User selected a different piece of their own. We obviously can't move there, so
                 // instead we select the new piece
-                if (m_state.game_state.board().piece_at(move.destination).is(m_state.game_state.turn_to_move())) {
-                    m_view_state.pinned_location = move.destination;
+                if (m_state.game_state.board().piece_at(move.end_location()).is(m_state.game_state.turn_to_move())) {
+                    m_view_state.pinned_location = move.end_location();
                 } else {
                     m_view_state.pinned_location = {};
                 }
@@ -69,7 +69,7 @@ AppController::AppController()
             }
 
             if (auto delegate = m_delegate.lock()) {
-                auto move_cmd = "move " + move.origin.to_string() + " " + move.destination.to_string();
+                auto move_cmd = "move " + move.start_location().to_string() + " " + move.end_location().to_string();
                 m_state.command_output.push_back({ "> " + move_cmd, CommandOutput::Type::Command });
                 delegate->on_execute_command(*this, move_cmd);
             }
@@ -96,7 +96,9 @@ AppController::AppController()
                     if (m_view_state.pinned_location.has_value()) {
                         auto from = m_view_state.pinned_location.value();
                         auto to = m_view_state.highlighted_location;
-                        try_perform_move(weechess::Move(from, to));
+
+                        // TODO: Find this move and apply it
+                        assert(false);
                     } else {
                         m_view_state.pinned_location = m_view_state.highlighted_location;
                     }
@@ -168,7 +170,9 @@ AppController::AppController()
                 if (m_view_state.pinned_location.has_value()) {
                     auto from = m_view_state.pinned_location.value();
                     auto to = m_view_state.highlighted_location;
-                    try_perform_move(weechess::Move(from, to));
+
+                    // TODO: Find this move and apply it
+                    assert(false);
                 } else {
                     m_view_state.pinned_location = m_view_state.highlighted_location;
                 }
@@ -291,9 +295,9 @@ ftxui::Element AppController::render()
 
     // Highlight the possible moves
     if (move_to_show_hints.has_value()) {
-        auto moves = m_state.game_state.analysis().legal_moves_from(move_to_show_hints.value());
+        auto moves = m_state.game_state.move_set().legal_moves_from(move_to_show_hints.value());
         for (auto& m : moves) {
-            auto cell = bp[m.destination];
+            auto cell = bp[m.end_location()];
             if (*cell == u' ')
                 cell.paint_symbol(u'•');
             decorations[cell.offset()] = BoardDecoration::PossibleMove;

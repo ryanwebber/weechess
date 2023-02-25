@@ -2,11 +2,11 @@
 
 #include <array>
 #include <optional>
+#include <weechess/bit_board.h>
 #include <weechess/color_map.h>
-#include <weechess/fast/bit_board.h>
 #include <weechess/piece.h>
 
-namespace weechess::fast::comptime {
+namespace weechess::comptime {
 
 constexpr uint8_t A_File = 7;
 constexpr uint8_t H_File = 0;

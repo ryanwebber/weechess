@@ -1,11 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
-#include <weechess/fast/bit_board.h>
+#include <weechess/bit_board.h>
 
 TEST_CASE("Least significant bit math", "[bitboard]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     // Random bits to use as noise in the test data,
     // just to make sure the LSB calculations aren't
@@ -53,7 +52,6 @@ TEST_CASE("Least significant bit math", "[bitboard]")
 TEST_CASE("BitBoard ostream formatting", "[bitboard]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     BitBoard bb;
     bb.set(Location::B1);

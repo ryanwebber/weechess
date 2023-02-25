@@ -1,6 +1,6 @@
-#include <weechess/fast/bit_board.h>
+#include <weechess/bit_board.h>
 
-namespace weechess::fast {
+namespace weechess {
 std::ostream& operator<<(std::ostream& os, const BitBoard& bb)
 {
     for (auto r = 7; r >= 0; r--) {

@@ -69,12 +69,13 @@ set(LIB_LOGGING_ENABLED ON)
 
 set(LIB_TARGET weechess)
 set(LIB_SOURCES
+        lib/bit_board.cpp
         lib/board.cpp
-        lib/fast/bit_board.cpp
-        lib/fast/move_generator.cpp
         lib/fen.cpp
         lib/game_state.cpp
         lib/location.cpp
+        lib/move_generator.cpp
+        lib/move.cpp
         lib/piece.cpp
         )
 

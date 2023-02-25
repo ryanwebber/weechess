@@ -50,8 +50,6 @@ struct Piece {
 
     char16_t to_symbol() const;
 
-    Piece chromatic_inverse() const;
-
     bool operator==(const Piece& other) const { return representation == other.representation; }
 
     static Piece none() { return Piece(); }

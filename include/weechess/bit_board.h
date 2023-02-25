@@ -7,7 +7,7 @@
 #include <tuple>
 #include <weechess/location.h>
 
-namespace weechess::fast {
+namespace weechess {
 
 class BitBoard {
 public:

@@ -3,28 +3,29 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include <weechess/fast/comptime.h>
-#include <weechess/fast/move_generator.h>
+#include <weechess/comptime.h>
 #include <weechess/game_state.h>
+#include <weechess/move_generator.h>
 
+// Simple perft implementation - this should be a command
 uint64_t count_moves(weechess::GameState gs, int depth)
 {
     if (depth == 0) {
         return 1;
     } else if (depth == 1) {
-        return gs.analysis().legal_moves().size();
+        return gs.move_set().legal_moves().size();
     }
 
     uint64_t count = 0;
-    for (auto& move : gs.analysis().legal_moves()) {
-        auto new_gs = weechess::GameState::by_performing_move(gs, move, nullptr).value();
+    for (auto& move : gs.move_set().legal_moves()) {
+        auto new_gs = weechess::GameState::by_performing_move(gs, move).value();
         count += count_moves(new_gs, depth - 1);
     }
 
     return count;
 }
 
-TEST_CASE("Legal move generation", "[rules][!mayfail]")
+TEST_CASE("Legal move generation", "[rules]")
 {
     using namespace weechess;
 
@@ -40,7 +41,6 @@ TEST_CASE("Legal move generation", "[rules][!mayfail]")
 TEST_CASE("Comptime knight attacks", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto table = comptime::compute_knight_attacks();
 
@@ -56,7 +56,6 @@ TEST_CASE("Comptime knight attacks", "[movegen]")
 TEST_CASE("Comptime king attacks", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto table = comptime::compute_king_attacks();
 
@@ -74,7 +73,6 @@ TEST_CASE("Comptime king attacks", "[movegen]")
 TEST_CASE("Comptime pawn attacks", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto table = comptime::compute_pawn_attacks();
 
@@ -90,7 +88,6 @@ TEST_CASE("Comptime pawn attacks", "[movegen]")
 TEST_CASE("Comptime rook slide masks", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto table = comptime::compute_rook_slide_masks();
 
@@ -120,7 +117,6 @@ TEST_CASE("Comptime rook slide masks", "[movegen]")
 TEST_CASE("Comptime bishop slide masks", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto table = comptime::compute_bishop_slide_masks();
 
@@ -149,7 +145,6 @@ TEST_CASE("Comptime bishop slide masks", "[movegen]")
 TEST_CASE("Comptime unoptimized rook slides with blockers", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto location = Location::C3;
     std::array<Location, 4> other_pieces = {
@@ -200,38 +195,9 @@ TEST_CASE("Comptime unoptimized rook slides with blockers", "[movegen]")
     CHECK(actual_moves == BitBoard::from(expectated));
 }
 
-TEST_CASE("Optimized rook move sanity check", "[movegen]")
-{
-    using namespace weechess;
-    using namespace weechess::fast;
-
-    auto noise = 0xa2f8df60487ed0b0ULL;
-
-    for (auto i = 0; i < 64; i++) {
-        Location l(i);
-
-        BitBoard occupancy;
-        for (auto x = 0; x < 10; x++) {
-            // Try to create slightly different board
-            // layouts for each case, setting 10-ish bits
-            occupancy.set(((noise ^ i) >> x) % 64);
-        }
-
-        occupancy.unset(l);
-
-        INFO("BitBoard at " << l.to_string() << " with occupancy (" << occupancy.data() << "ULL)\n" << occupancy);
-
-        auto slow_results = comptime::compute_rook_attacks_unoptimized(l, occupancy);
-        auto fast_results = internal::rook_attacks(l, occupancy);
-
-        CHECK(slow_results == fast_results);
-    }
-}
-
 TEST_CASE("Comptime unoptimized bishop slides with blockers", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto location = Location::C3;
     std::array<Location, 3> other_pieces = {
@@ -279,10 +245,36 @@ TEST_CASE("Comptime unoptimized bishop slides with blockers", "[movegen]")
     CHECK(actual_moves == BitBoard::from(expectated));
 }
 
+TEST_CASE("Optimized rook move sanity check", "[movegen]")
+{
+    using namespace weechess;
+
+    auto noise = 0xa2f8df60487ed0b0ULL;
+
+    for (auto i = 0; i < 64; i++) {
+        Location l(i);
+
+        BitBoard occupancy;
+        for (auto x = 0; x < 10; x++) {
+            // Try to create slightly different board
+            // layouts for each case, setting 10-ish bits
+            occupancy.set(((noise ^ i) >> x) % 64);
+        }
+
+        occupancy.unset(l);
+
+        INFO("BitBoard at " << l.to_string() << " with occupancy (" << occupancy.data() << "ULL)\n" << occupancy);
+
+        auto slow_results = comptime::compute_rook_attacks_unoptimized(l, occupancy);
+        auto fast_results = testapi::rook_attacks(l, occupancy);
+
+        CHECK(slow_results == fast_results);
+    }
+}
+
 TEST_CASE("Optimized bishop move sanity check", "[movegen]")
 {
     using namespace weechess;
-    using namespace weechess::fast;
 
     auto noise = 0xa2f8df60487ed0b0ULL;
 
@@ -301,7 +293,7 @@ TEST_CASE("Optimized bishop move sanity check", "[movegen]")
         INFO("BitBoard at " << l.to_string() << " with occupancy (" << occupancy.data() << "ULL)\n" << occupancy);
 
         auto slow_results = comptime::compute_bishop_attacks_unoptimized(l, occupancy);
-        auto fast_results = internal::bishop_attacks(l, occupancy);
+        auto fast_results = testapi::bishop_attacks(l, occupancy);
 
         CHECK(slow_results == fast_results);
     }

@@ -2,14 +2,15 @@
 
 #include <array>
 #include <optional>
+#include <vector>
 
-#include <weechess/fast/bit_board.h>
+#include <weechess/bit_board.h>
 #include <weechess/game_state.h>
 #include <weechess/move.h>
 
-namespace weechess::fast {
+namespace weechess {
 
-namespace internal {
+namespace testapi {
     BitBoard rook_attacks(Location, BitBoard blockers);
     BitBoard bishop_attacks(Location, BitBoard blockers);
 }

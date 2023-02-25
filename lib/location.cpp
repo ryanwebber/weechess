@@ -7,8 +7,6 @@ bool Location::is_valid() const { return offset < Board::cell_count; }
 
 std::string Location::to_string() const { return std::string(1, 'A' + file()) + std::to_string(rank() + 1); }
 
-Location Location::chromatic_inverse() const { return Location(Board::cell_count - offset - 1); }
-
 std::optional<Location> Location::from_string(std::string_view name)
 {
     if (name.size() != 2) {

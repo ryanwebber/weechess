@@ -70,8 +70,6 @@ struct Location {
         }
     }
 
-    Location chromatic_inverse() const;
-
     static constexpr Location from_rank_and_file(uint8_t rank, uint8_t file) { return Location(rank, file); }
     static std::optional<Location> from_string(std::string_view);
 
