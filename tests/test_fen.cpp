@@ -12,4 +12,6 @@ TEST_CASE("Basic fen string parsing", "[fen]")
     REQUIRE(gs->castle_rights()[Color::White].can_castle_kingside == true);
     REQUIRE(gs->castle_rights()[Color::Black].can_castle_kingside == false);
     REQUIRE(gs->turn_to_move() == Color::Black);
+
+    REQUIRE(gs->board().occupancy_for(Piece(Piece::Type::Pawn, Color::White)) != BitBoard::empty());
 }

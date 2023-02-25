@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <span>
+#include <string>
 #include <tuple>
 #include <weechess/location.h>
 
@@ -66,6 +67,8 @@ public:
     }
 
     constexpr uint8_t count_set_bits() const { return __builtin_popcountll(m_data); }
+
+    std::string to_string() const;
 
     static constexpr BitBoard from(std::span<const Location> locations)
     {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <iostream>
 #include <optional>
 #include <string>
 
@@ -49,12 +50,16 @@ struct Piece {
     bool is_none() const { return !exists(); }
 
     char16_t to_symbol() const;
+    char to_letter() const;
 
     bool operator==(const Piece& other) const { return representation == other.representation; }
 
     static Piece none() { return Piece(); }
+    static const std::array<Piece, 12> all_valid_pieces;
 };
 
 Color invert_color(Color);
+
+std::ostream& operator<<(std::ostream&, const Piece&);
 
 }

@@ -4,6 +4,8 @@
 #include <weechess/comptime.h>
 #include <weechess/move_generator.h>
 
+#include "log.h"
+
 namespace weechess {
 
 namespace {
@@ -20,40 +22,35 @@ namespace {
     private:
         const MoveGenerator::Request& m_request;
 
-        BitBoard m_shared_occupancy;
-
     public:
         Helper(const MoveGenerator::Request& request)
             : m_request(request)
-            , m_shared_occupancy({})
         {
-            m_shared_occupancy |= occupancy(Piece::Type::Pawn, Color::White);
-            m_shared_occupancy |= occupancy(Piece::Type::Pawn, Color::Black);
-            m_shared_occupancy |= occupancy(Piece::Type::Knight, Color::White);
-            m_shared_occupancy |= occupancy(Piece::Type::Knight, Color::Black);
-            m_shared_occupancy |= occupancy(Piece::Type::Bishop, Color::White);
-            m_shared_occupancy |= occupancy(Piece::Type::Bishop, Color::Black);
-            m_shared_occupancy |= occupancy(Piece::Type::Rook, Color::White);
-            m_shared_occupancy |= occupancy(Piece::Type::Rook, Color::Black);
-            m_shared_occupancy |= occupancy(Piece::Type::Queen, Color::White);
-            m_shared_occupancy |= occupancy(Piece::Type::Queen, Color::Black);
-            m_shared_occupancy |= occupancy(Piece::Type::King, Color::White);
-            m_shared_occupancy |= occupancy(Piece::Type::King, Color::Black);
         }
 
-        Piece piece_to_move(Piece::Type type) const { return Piece(type, m_request.turn_to_move); }
+        const Board& board() const { return m_request.board(); }
+
+        Piece piece_to_move(Piece::Type type) const { return Piece(type, m_request.turn_to_move()); }
 
         Location forward(Location location) const
         {
-            if (m_request.turn_to_move == Color::White)
+            if (m_request.turn_to_move() == Color::White)
                 return location.offset_by(Location::Up).value();
             else
                 return location.offset_by(Location::Down).value();
         }
 
+        Location backward(Location location) const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return location.offset_by(Location::Down).value();
+            else
+                return location.offset_by(Location::Up).value();
+        }
+
         BitBoard backrank_mask() const
         {
-            if (m_request.turn_to_move == Color::White)
+            if (m_request.turn_to_move() == Color::White)
                 return comptime::rank_mask[comptime::_8th_Rank];
             else
                 return comptime::rank_mask[comptime::_1st_Rank];
@@ -61,22 +58,16 @@ namespace {
 
         BitBoard shift_forward(BitBoard bb) const
         {
-            if (m_request.turn_to_move == Color::White)
+            if (m_request.turn_to_move() == Color::White)
                 return BitBoard(bb.data() << 8);
             else
                 return BitBoard(bb.data() >> 8);
         }
 
-        BitBoard occupancy() const { return m_shared_occupancy; }
-
-        BitBoard occupancy(Piece::Type type, Color color) const
+        BitBoard occupancy_to_move(Piece::Type type) const
         {
-            return m_request.occupancy[Piece(type, color).representation];
+            return m_request.board().occupancy_for(Piece(type, m_request.turn_to_move()));
         }
-
-        BitBoard occupancy(Piece::Type type) const { return occupancy(type, m_request.turn_to_move); }
-
-        BitBoard non_occupancy() const { return ~m_shared_occupancy; }
     };
 
     BitBoard generate_rook_attacks(Location location, BitBoard blockers)
@@ -100,16 +91,17 @@ namespace {
     void generate_pawn_moves(const Helper& helper, std::vector<Move>& moves)
     {
         Piece piece = helper.piece_to_move(Piece::Type::Pawn);
-        BitBoard positions = helper.occupancy(Piece::Type::Pawn);
-        positions &= helper.non_occupancy();
+        BitBoard positions = helper.shift_forward(helper.occupancy_to_move(Piece::Type::Pawn));
+        positions &= helper.board().non_occupancy();
 
         BitBoard promotion_positions = positions & helper.backrank_mask();
         BitBoard non_promotion_positions = positions & ~helper.backrank_mask();
 
         // Single step forward moves
         while (non_promotion_positions.any()) {
-            auto location = non_promotion_positions.pop_lsb().value();
-            moves.push_back(Move::by_moving(piece, location, helper.forward(location)));
+            auto target = non_promotion_positions.pop_lsb().value();
+            auto move = Move::by_moving(piece, helper.backward(target), target);
+            moves.push_back(move);
         }
     }
 
@@ -120,26 +112,22 @@ namespace {
     }
 }
 
-MoveGenerator::Request::Request()
-    : turn_to_move(Color::White)
-    , castle_rights(CastleRights::all())
-    , occupancy({})
-    , en_passant_target({})
+MoveGenerator::Request::Request(Board board)
+    : m_board(board)
+    , m_turn_to_move(Color::White)
+    , m_castle_rights(CastleRights::all())
+    , m_en_passant_target({})
 {
 }
 
-void MoveGenerator::Request::set_turn_to_move(Color color) { turn_to_move = color; }
-void MoveGenerator::Request::set_castle_rights(Color color, CastleRights rights) { castle_rights[color] = rights; }
-void MoveGenerator::Request::set_en_passant_target(const Location& location) { en_passant_target = location; }
-
-void MoveGenerator::Request::add_piece(const Piece& piece, const Location& location)
-{
-    occupancy[piece.representation].set(location);
-}
+void MoveGenerator::Request::set_turn_to_move(Color color) { m_turn_to_move = color; }
+void MoveGenerator::Request::set_castle_rights(Color color, CastleRights rights) { m_castle_rights[color] = rights; }
+void MoveGenerator::Request::set_en_passant_target(const Location& location) { m_en_passant_target = location; }
 
 MoveGenerator::Result MoveGenerator::execute(const Request& request) const
 {
-    Result result {};
+    Result result;
+    generate_legal_moves(request, result.legal_moves);
     return result;
 }
 

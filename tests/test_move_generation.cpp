@@ -17,12 +17,25 @@ uint64_t count_moves(weechess::GameState gs, int depth)
     }
 
     uint64_t count = 0;
-    for (auto& move : gs.move_set().legal_moves()) {
+    for (const auto& move : gs.move_set().legal_moves()) {
         auto new_gs = weechess::GameState::by_performing_move(gs, move).value();
         count += count_moves(new_gs, depth - 1);
     }
 
     return count;
+}
+
+TEST_CASE("Make a legal move", "[rules]")
+{
+    using namespace weechess;
+
+    auto gs = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
+
+    const auto& moves = gs.move_set().legal_moves();
+    CHECK(moves.size() == 5);
+    const auto& gs_prime = GameState::by_performing_move(gs, moves[0]);
+    INFO("Move is: " << moves[0].to_short_algebraic_notation());
+    CHECK(gs_prime.has_value());
 }
 
 TEST_CASE("Legal move generation", "[rules]")
@@ -31,6 +44,7 @@ TEST_CASE("Legal move generation", "[rules]")
 
     // https://www.chessprogramming.org/Perft_Results#Position_5
     auto gs = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
+
     CHECK(count_moves(gs, 1) == 44);
     CHECK(count_moves(gs, 2) == 1486);
     CHECK(count_moves(gs, 3) == 62379);

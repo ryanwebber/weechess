@@ -88,4 +88,10 @@ const Location Location::F8 = Location::from_rank_and_file(7, 5);
 const Location Location::G8 = Location::from_rank_and_file(7, 6);
 const Location Location::H8 = Location::from_rank_and_file(7, 7);
 
+std::ostream& operator<<(std::ostream& os, const Location& location)
+{
+    os << location.to_string();
+    return os;
+}
+
 }

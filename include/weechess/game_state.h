@@ -13,6 +13,8 @@
 
 namespace weechess {
 
+class GameState;
+
 struct CastleRights {
     bool can_castle_kingside { true };
     bool can_castle_queenside { true };
@@ -26,10 +28,17 @@ struct CastleRights {
 class MoveSet {
 public:
     MoveSet() = default;
+    MoveSet(std::vector<Move> legal_moves);
 
     std::span<const Move> legal_moves() const;
     std::span<const Move> legal_moves_from(Location) const;
     bool is_legal_move(const Move&) const;
+
+    static MoveSet compute_from(const GameState&);
+
+private:
+    bool m_is_sorted { false };
+    std::vector<Move> m_legal_moves;
 };
 
 class GameState {
@@ -49,19 +58,19 @@ public:
     bool is_checkmate() const;
     bool is_stalemate() const;
 
-    const MoveSet move_set() const;
+    const MoveSet& move_set() const;
 
     std::string to_fen() const;
+
     static std::optional<GameState> from_fen(std::string_view);
     static GameState new_game();
-
     static std::optional<GameState> by_performing_move(const GameState&, const Move&);
 
 private:
     Board m_board;
     Color m_turn_to_move;
 
-    MoveSet m_move_set {};
+    std::optional<MoveSet> m_move_set {};
 
     ColorMap<CastleRights> m_castle_rights;
     std::optional<Location> m_en_passant_target;

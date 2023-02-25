@@ -4,24 +4,31 @@ namespace weechess {
 
 size_t piece_index(Piece piece)
 {
-    auto offset = piece.color() == Color::White ? 0 : 6;
+    auto offset = piece.color() == Color::White ? 0 : 7;
     return offset + static_cast<size_t>(piece.type());
 }
 
+BitBoard& Board::Buffer::occupancy_for(Piece piece) { return m_occupancy[piece_index(piece)]; }
+const BitBoard& Board::Buffer::occupancy_for(Piece piece) const { return m_occupancy[piece_index(piece)]; }
+
 Board::Board() = default;
-Board::Board(Buffer occupancy)
-    : m_occupancy(occupancy)
+Board::Board(Buffer piece_buffer)
+    : m_piece_buffer(std::move(piece_buffer))
+    , m_shared_occupancy({})
+    , m_color_occupancy({}, {})
 {
+    for (const auto& piece : Piece::all_valid_pieces) {
+        const auto& occupancy = m_piece_buffer.occupancy_for(piece);
+        m_shared_occupancy |= occupancy;
+        m_color_occupancy[piece.color()] |= occupancy;
+    }
 }
 
 Piece Board::piece_at(Location location) const
 {
-    for (auto i = 0; i < m_occupancy.size(); i++) {
-        if (m_occupancy[i][location]) {
-            auto color = i < 6 ? Color::White : Color::Black;
-            auto type = static_cast<Piece::Type>(i % 6);
-            return Piece(type, color);
-        }
+    for (const auto& piece : Piece::all_valid_pieces) {
+        if (m_piece_buffer.occupancy_for(piece)[location.offset])
+            return piece;
     }
 
     return Piece::none();
@@ -32,8 +39,11 @@ Color Board::color_at(Location location) const
     return (location.file() + location.rank()) % 2 == 0 ? Color::White : Color::Black;
 }
 
-BitBoard& Board::occupancy_for(Piece piece) { return m_occupancy[piece_index(piece)]; }
-const BitBoard& Board::occupancy_for(Piece piece) const { return m_occupancy[piece_index(piece)]; }
+const Board::Buffer& Board::piece_buffer() const { return m_piece_buffer; }
+const BitBoard& Board::occupancy_for(Piece piece) const { return m_piece_buffer.occupancy_for(piece); }
+const BitBoard& Board::shared_occupancy() const { return m_shared_occupancy; }
+const ColorMap<BitBoard>& Board::color_occupancy() const { return m_color_occupancy; }
+BitBoard Board::non_occupancy() const { return ~m_shared_occupancy; }
 
 std::array<Piece, 64> Board::to_array() const
 {
@@ -57,17 +67,15 @@ const Piece& Board::Builder::operator[](const Location& location) const { return
 
 Board Board::Builder::build() const
 {
-    Board::Buffer occupancy {};
+    Board::Buffer piece_buffer {};
 
-    for (auto i = 0; i < 64; i++) {
+    for (auto i = 0; i < m_pieces.size(); i++) {
         Location location(i);
         Piece piece = m_pieces[i];
-        auto index = piece_index(piece);
-
-        occupancy[index].set(location);
+        piece_buffer.occupancy_for(piece).set(location);
     }
 
-    return Board(occupancy);
+    return Board(piece_buffer);
 }
 
 }

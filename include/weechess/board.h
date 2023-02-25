@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include <weechess/bit_board.h>
+#include <weechess/color_map.h>
 #include <weechess/location.h>
 #include <weechess/piece.h>
 
@@ -16,7 +17,17 @@ class Board {
 public:
     static constexpr size_t cell_count = 64;
 
-    using Buffer = std::array<BitBoard, 12>;
+    struct Buffer {
+        std::array<BitBoard, 14> m_occupancy;
+
+        Buffer() = default;
+        Buffer(std::array<BitBoard, 12>);
+
+        const std::array<BitBoard, 12> data() const;
+
+        BitBoard& occupancy_for(Piece piece);
+        const BitBoard& occupancy_for(Piece piece) const;
+    };
 
     Board();
     Board(Buffer);
@@ -24,8 +35,11 @@ public:
     Piece piece_at(Location location) const;
     Color color_at(Location location) const;
 
-    BitBoard& occupancy_for(Piece piece);
+    const Buffer& piece_buffer() const;
     const BitBoard& occupancy_for(Piece piece) const;
+    const BitBoard& shared_occupancy() const;
+    const ColorMap<BitBoard>& color_occupancy() const;
+    BitBoard non_occupancy() const;
 
     std::array<Piece, 64> to_array() const;
 
@@ -43,7 +57,9 @@ public:
     };
 
 private:
-    Buffer m_occupancy;
+    Buffer m_piece_buffer {};
+    BitBoard m_shared_occupancy {};
+    ColorMap<BitBoard> m_color_occupancy {};
 };
 
 }

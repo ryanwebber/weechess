@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <iostream>
 #include <optional>
 #include <string>
 
@@ -147,5 +148,7 @@ private:
     {
     }
 };
+
+std::ostream& operator<<(std::ostream&, const Location&);
 
 }

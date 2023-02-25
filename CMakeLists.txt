@@ -148,9 +148,11 @@ include(CTest)
 
 set(TEST_TARGET weechess-tests)
 set(TEST_SOURCES
+        tests/main.cpp
         tests/test_bit_board.cpp
         tests/test_fen.cpp
         tests/test_move_generation.cpp
+        tests/test_move.cpp
         )
 
 add_executable(${TEST_TARGET} ${TEST_SOURCES})
@@ -159,6 +161,7 @@ target_link_libraries(${TEST_TARGET}
         PRIVATE
             ${LIB_TARGET}
             Catch2::Catch2WithMain
+            spdlog::spdlog
         )
 
 catch_discover_tests(${TEST_TARGET})

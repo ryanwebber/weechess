@@ -3,6 +3,7 @@
 #include <array>
 #include <bitset>
 #include <optional>
+#include <string>
 
 #include <weechess/location.h>
 #include <weechess/piece.h>
@@ -15,8 +16,29 @@ enum class CastleSide {
 };
 
 class Move {
+public:
+    using Data = std::bitset<32>;
+
+    Move(const Move&) = default;
+
+    Piece moving_piece() const;
+    Piece resulting_piece() const;
+
+    static Move by_moving(Piece, Location from, Location to);
+    static Move by_capturing(Piece, Location from, Location to, Piece::Type captured);
+    static Move by_promoting(Piece, Location from, Location to, Piece::Type promoted);
+    static Move by_castling(Piece, CastleSide);
+    static Move by_en_passant(Piece, Location from, Location to);
+
+    Location start_location() const;
+    Location end_location() const;
+
+    std::string to_short_algebraic_notation() const;
+
+    friend bool operator==(const Move&, const Move&);
+
 private:
-    enum Flags : uint32_t {
+    enum class Flags : uint32_t {
         PieceType,
         Origin,
         Destination,
@@ -55,11 +77,13 @@ private:
         28,
     };
 
-    Move() = default;
+    Move();
 
     uint32_t get_flags(Flags flags) const;
-    void set_flags(Flags flags, uint32_t value);
+    Color get_color() const;
 
+    void set_flags(Flags flags, uint32_t value);
+    void set_color(Color color);
     void set_piece_type(Piece::Type type);
     void set_origin(Location location);
     void set_destination(Location location);
@@ -67,21 +91,7 @@ private:
     void set_promotion(Piece::Type type);
     void set_castle_side(CastleSide);
 
-public:
-    using Data = std::bitset<32>;
-
-    static Move by_moving(Piece, Location from, Location to);
-    static Move by_capturing(Piece, Location from, Location to, Piece::Type captured);
-    static Move by_promoting(Piece, Location from, Location to, Piece::Type promoted);
-    static Move by_castling(Piece, CastleSide);
-    static Move by_en_passant(Piece, Location from, Location to);
-
-    Location start_location() const;
-    Location end_location() const;
-
     Data m_data;
-
-    friend bool operator==(const Move&, const Move&);
 };
 
 bool operator==(const Move& lhs, const Move& rhs);
