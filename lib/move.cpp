@@ -2,7 +2,7 @@
 
 namespace weechess {
 
-Move::Move() { set_flags(Flags::Promotion, ~0); };
+Move::Move() { }
 
 Piece Move::moving_piece() const
 {
@@ -12,9 +12,13 @@ Piece Move::moving_piece() const
 
 Piece Move::resulting_piece() const
 {
-    // TODO: Handle promotions
-    auto piece_type = static_cast<Piece::Type>(get_flags(Flags::PieceType));
-    return Piece(piece_type, get_color());
+    if (is_promotion()) {
+        auto piece_type = promoted_piece_type();
+        return Piece(piece_type, get_color());
+    } else {
+        auto piece_type = static_cast<Piece::Type>(get_flags(Flags::PieceType));
+        return Piece(piece_type, get_color());
+    }
 }
 
 uint32_t Move::get_flags(Flags flags) const
@@ -35,19 +39,26 @@ void Move::set_piece_type(Piece::Type type) { set_flags(Flags::PieceType, static
 void Move::set_origin(Location location) { set_flags(Flags::Origin, location.offset); }
 void Move::set_destination(Location location) { set_flags(Flags::Destination, location.offset); }
 void Move::set_capture(Piece::Type type) { set_flags(Flags::Capture, static_cast<uint32_t>(type)); }
-void Move::set_promotion(Piece::Type type) { set_flags(Flags::Promotion, static_cast<uint32_t>(type)); }
 void Move::set_double_pawn_push() { set_flags(Flags::DoublePawn, 1); }
+void Move::set_promotion(Piece::Type type)
+{
+    if (type == Piece::Type::None) {
+        set_flags(Flags::Promotion, 0b0000);
+    } else {
+        set_flags(Flags::Promotion, 0b1000 | static_cast<uint32_t>(type));
+    }
+}
 
 Location Move::start_location() const { return Location(get_flags(Flags::Origin)); }
 Location Move::end_location() const { return Location(get_flags(Flags::Destination)); }
 
 bool Move::is_capture() const { return get_flags(Flags::Capture) != 0; }
-bool Move::is_promotion() const { return get_flags(Flags::Promotion) != 0; }
 bool Move::is_en_passant() const { return get_flags(Flags::EnPassant) != 0; }
 bool Move::is_double_pawn() const { return get_flags(Flags::DoublePawn) != 0; }
+bool Move::is_promotion() const { return (get_flags(Flags::Promotion) & 0b1000) != 0; }
 
 Piece::Type Move::captured_piece_type() const { return static_cast<Piece::Type>(get_flags(Flags::Capture)); }
-Piece::Type Move::promoted_piece_type() const { return static_cast<Piece::Type>(get_flags(Flags::Promotion)); }
+Piece::Type Move::promoted_piece_type() const { return static_cast<Piece::Type>(0b0111 & get_flags(Flags::Promotion)); }
 
 Move Move::by_moving(Piece piece, Location from, Location to)
 {

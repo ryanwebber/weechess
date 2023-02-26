@@ -59,20 +59,20 @@ namespace {
                 return location.offset_by(Location::Up).value();
         }
 
-        Location left(Location location) const
+        Location file_shifted(Location location, int8_t sign) const
         {
-            if (m_request.turn_to_move() == Color::White)
-                return location.offset_by(Location::Left).value();
-            else
+            if ((m_request.turn_to_move() == Color::White) == (sign > 0))
                 return location.offset_by(Location::Right).value();
+            else
+                return location.offset_by(Location::Left).value();
         }
 
-        Location right(Location location) const
+        BitBoard file_shifted(BitBoard bb, int8_t sign) const
         {
-            if (m_request.turn_to_move() == Color::White)
-                return location.offset_by(Location::Right).value();
+            if ((m_request.turn_to_move() == Color::White) == (sign > 0))
+                return (bb & ~comptime::file_mask[comptime::H_File]) << 1;
             else
-                return location.offset_by(Location::Left).value();
+                return (bb & ~comptime::file_mask[comptime::A_File]) >> 1;
         }
 
         BitBoard backrank_mask() const
@@ -91,17 +91,9 @@ namespace {
                 return comptime::rank_mask[comptime::_8th_Rank] >> (8 * (rank - 1));
         }
 
-        BitBoard left_file_mask() const
+        BitBoard edge_file_mask(int sign) const
         {
-            if (m_request.turn_to_move() == Color::White)
-                return comptime::file_mask[comptime::A_File];
-            else
-                return comptime::file_mask[comptime::H_File];
-        }
-
-        BitBoard right_file_mask() const
-        {
-            if (m_request.turn_to_move() == Color::White)
+            if ((m_request.turn_to_move() == Color::White) == (sign > 0))
                 return comptime::file_mask[comptime::H_File];
             else
                 return comptime::file_mask[comptime::A_File];
@@ -113,22 +105,6 @@ namespace {
                 return bb << 8;
             else
                 return bb >> 8;
-        }
-
-        BitBoard shift_left(BitBoard bb) const
-        {
-            if (m_request.turn_to_move() == Color::White)
-                return (bb & ~comptime::file_mask[comptime::A_File]) >> 1;
-            else
-                return (bb & ~comptime::file_mask[comptime::H_File]) << 1;
-        }
-
-        BitBoard shift_right(BitBoard bb) const
-        {
-            if (m_request.turn_to_move() == Color::White)
-                return (bb & ~comptime::file_mask[comptime::H_File]) >> 1;
-            else
-                return (bb & ~comptime::file_mask[comptime::A_File]) << 1;
         }
 
         BitBoard occupancy_to_move(Piece::Type type) const
@@ -236,29 +212,30 @@ namespace {
         // Captures
         {
             BitBoard pawns = helper.occupancy_to_move(Piece::Type::Pawn);
-
-            // Left captures
-            {
-                BitBoard attacks = helper.shift_left(helper.shift_forward(pawns)) & helper.attackable();
+            constexpr std::array<int8_t, 2> signs = { -1, 1 };
+            for (const auto& sign : signs) {
+                BitBoard attacks = helper.file_shifted(helper.shift_forward(pawns), sign) & helper.attackable();
                 BitBoard attacks_with_promotion = attacks & helper.backrank_mask();
-                BitBoard en_passant_attacks = helper.shift_left(helper.shift_forward(pawns)) & helper.en_passant_mask();
+                BitBoard en_passant_attacks
+                    = helper.file_shifted(helper.shift_forward(pawns), sign) & helper.en_passant_mask();
 
                 attacks &= ~helper.backrank_mask();
 
                 // Regular captures
                 while (attacks.any()) {
                     auto target = attacks.pop_lsb().value();
-                    auto origin = helper.backward(helper.right(target));
+                    auto origin = helper.backward(helper.file_shifted(target, -sign));
                     auto move = Move::by_capturing(piece, origin, target, helper.board().piece_at(target).type());
                     moves.push_back(move);
                 }
 
                 // Promotion captures
-                while (attacks.any()) {
-                    auto target = attacks.pop_lsb().value();
+                while (attacks_with_promotion.any()) {
+                    auto target = attacks_with_promotion.pop_lsb().value();
                     auto capture = helper.board().piece_at(target).type();
                     for (const auto& type : promotion_types) {
-                        auto move = Move::by_promoting(piece, helper.backward(target), target, type);
+                        auto move = Move::by_promoting(
+                            piece, helper.backward(helper.file_shifted(target, -sign)), target, type);
                         move.set_capture(capture);
                         moves.push_back(move);
                     }
@@ -267,7 +244,8 @@ namespace {
                 // En passant captures
                 if (en_passant_attacks.any()) {
                     auto target = helper.en_passant_target().value();
-                    moves.push_back(Move::by_en_passant(piece, helper.backward(helper.right(target)), target));
+                    moves.push_back(
+                        Move::by_en_passant(piece, helper.backward(helper.file_shifted(target, -sign)), target));
                 }
             }
         }

@@ -148,6 +148,13 @@ TEST_CASE("Rook move generation", "[movegen]")
             CHECK(slow_results == fast_results);
         }
     }
+
+    SECTION("Attacking moves")
+    {
+        auto game_state = GameState::from_fen("8/2p5/8/8/4p3/2R1P3/2P5/8 w - - 0 1").value();
+        auto moves = game_state.move_set().legal_moves();
+        REQUIRE(moves.size() == 7);
+    }
 }
 
 TEST_CASE("Bishop move generation", "[movegen]")
@@ -252,6 +259,25 @@ TEST_CASE("Bishop move generation", "[movegen]")
             CHECK(slow_results == fast_results);
         }
     }
+
+    SECTION("Attacking moves")
+    {
+        auto game_state = GameState::from_fen("8/8/4p3/4P3/1p6/1pB5/1P6/8 w - - 0 1").value();
+        auto moves = game_state.move_set().legal_moves();
+        REQUIRE(moves.size() == 4);
+    }
+}
+
+TEST_CASE("Queen move generation", "[movegen]")
+{
+    using namespace weechess;
+
+    SECTION("Attacking moves")
+    {
+        auto game_state = GameState::from_fen("8/2p5/4p3/4P3/1p5p/1pQ4P/1P6/8 w - - 0 1").value();
+        auto moves = game_state.move_set().legal_moves();
+        REQUIRE(moves.size() == 15);
+    }
 }
 
 TEST_CASE("Pawn move generation", "[movegen]")
@@ -288,8 +314,10 @@ TEST_CASE("Pawn move generation", "[movegen]")
         auto game_state = GameState::from_fen("8/8/8/8/8/8/2P5/8 w - - 0 1").value();
         auto moves = game_state.move_set().legal_moves();
 
-        auto dbl_move
-            = std::find_if(moves.begin(), moves.end(), [](const Move& m) { return m.end_location() == Location::C4; });
+        auto dbl_move = std::find_if(moves.begin(), moves.end(), [](const Move& m) {
+            ;
+            return m.end_location() == Location::C4;
+        });
 
         REQUIRE(dbl_move != moves.end());
         CHECK(dbl_move->is_double_pawn());
@@ -300,6 +328,19 @@ TEST_CASE("Pawn move generation", "[movegen]")
         auto game_state = GameState::from_fen("8/8/8/8/8/2p5/2P5/8 w - - 0 1").value();
         auto moves = game_state.move_set().legal_moves();
         CHECK(moves.size() == 0);
+    }
+
+    SECTION("Promoting moves")
+    {
+        auto game_state = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
+        auto moves = game_state.move_set().legal_moves();
+
+        auto count = std::count_if(moves.begin(), moves.end(), [](const Move& m) {
+            ;
+            return m.is_promotion();
+        });
+
+        REQUIRE(count == 4);
     }
 }
 
@@ -318,6 +359,13 @@ TEST_CASE("Knight move generation", "[movegen]")
         };
 
         CHECK(table[Location::B1.offset] == BitBoard::from(expected));
+    }
+
+    SECTION("Attacking moves")
+    {
+        auto game_state = GameState::from_fen("8/8/8/3p4/1N6/p7/P7/8 w - - 0 1").value();
+        auto moves = game_state.move_set().legal_moves();
+        REQUIRE(moves.size() == 5);
     }
 }
 
@@ -338,5 +386,12 @@ TEST_CASE("King move generation", "[movegen]")
         };
 
         CHECK(table[Location::D8.offset] == BitBoard::from(expected));
+    }
+
+    SECTION("Attacking moves")
+    {
+        auto game_state = GameState::from_fen("8/8/8/2p5/1KP5/pP6/P7/8 w - - 0 1").value();
+        auto moves = game_state.move_set().legal_moves();
+        REQUIRE(moves.size() == 6);
     }
 }
