@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "fen.h"
 #include "log.h"
 #include <weechess/game_state.h>
@@ -15,6 +17,7 @@ MoveSet::MoveSet(std::vector<Move> legal_moves)
 std::span<const Move> MoveSet::legal_moves() const { return m_legal_moves; };
 std::span<const Move> MoveSet::legal_moves_from(Location) const
 {
+    (void)m_is_sorted;
     assert(false);
     return {};
 }
@@ -45,7 +48,6 @@ GameState::GameState()
     : m_turn_to_move(Color::White)
     , m_castle_rights(CastleRights::all())
     , m_en_passant_target({})
-    , m_move_set()
 {
 }
 
@@ -55,7 +57,6 @@ GameState::GameState(
     , m_turn_to_move(turn_to_move)
     , m_castle_rights(castle_rights)
     , m_en_passant_target(en_passant_target)
-    , m_move_set()
 {
 }
 
@@ -78,6 +79,138 @@ const MoveSet& GameState::move_set() const
     return m_move_set.value();
 }
 
+std::string GameState::san_notation(const Move& move) const
+{
+    auto target = move.end_location();
+    auto origin = move.start_location();
+    auto piece = move.moving_piece();
+
+    std::stringstream ss;
+
+    if (piece.type() == Piece::Type::Pawn && move.is_capture()) {
+        ss << static_cast<char>('a' + origin.file());
+    } else {
+        ss << static_cast<char>(std::toupper(piece.to_letter()));
+
+        std::vector<Location> alternative_possible_sources;
+        for (const auto& move : move_set().legal_moves()) {
+            if (move.end_location() == target && move.start_location() != origin && move.moving_piece() == piece) {
+                alternative_possible_sources.push_back(move.start_location());
+            }
+        }
+
+        if (alternative_possible_sources.size() == 1) {
+            if (alternative_possible_sources[0].file() != origin.file()) {
+                ss << static_cast<char>('a' + origin.file());
+            } else {
+                ss << (origin.rank() + 1);
+            }
+        } else if (alternative_possible_sources.size() > 1) {
+            ss << origin.to_string();
+        }
+    }
+
+    if (move.is_capture()) {
+        ss << 'x';
+    }
+
+    ss << target.to_string();
+
+    return ss.str();
+}
+
+std::string GameState::verbose_description(const Move& move) const
+{
+    std::stringstream ss;
+
+    auto gs2 = GameState::by_performing_move(*this, move);
+    auto move_from = move.start_location();
+    auto move_to = move.end_location();
+
+    ss << "\n";
+
+    for (auto i = 0; i < 8; i++) {
+        auto rank = 7 - i;
+        ss << (rank + 1) << "   ";
+
+        for (auto file = 0; file < 8; file++) {
+            auto loc = Location::from_rank_and_file(rank, file);
+
+            auto piece = board().piece_at(loc);
+            auto letter = piece.exists() ? piece.to_letter() : '.';
+
+            if (loc == move_from) {
+                ss << '[' << letter << ']';
+            } else {
+                ss << ' ' << letter << ' ';
+            }
+        }
+
+        if (rank == 3) {
+            ss << "     →     ";
+        } else {
+            ss << "           ";
+        }
+
+        if (gs2.has_value()) {
+            for (auto file = 0; file < 8; file++) {
+                auto loc = Location::from_rank_and_file(rank, file);
+
+                auto piece = gs2->board().piece_at(loc);
+                auto letter = piece.exists() ? piece.to_letter() : '.';
+
+                if (loc == move_from || loc == move_to) {
+                    ss << '[' << letter << ']';
+                } else {
+                    ss << ' ' << letter << ' ';
+                }
+            }
+        } else if (rank == 3) {
+            ss << " .  . Invalid Move .  . ";
+        } else {
+            ss << " .  .  .  .  .  .  .  . ";
+        }
+
+        ss << "\n\n";
+    }
+
+    ss << "\n";
+    ss << "   A  B  C  D  E  F  G  H              A  B  C  D  E  F  G  H";
+    ss << "\n";
+    ss << "\n";
+
+    ss << "Flags\n";
+    ss << "Move:      " << san_notation(move) << "\n";
+
+    ss << "Capture:   ";
+    if (move.is_capture()) {
+        ss << Piece(move.captured_piece_type(), invert_color(m_turn_to_move)).to_letter();
+    } else {
+        ss << "-";
+    }
+    ss << "\n";
+
+    ss << "Promotion: ";
+    if (move.is_promotion()) {
+        ss << Piece(move.promoted_piece_type(), m_turn_to_move).to_letter();
+    } else {
+        ss << "-";
+    }
+    ss << "\n";
+
+    ss << "Castle:    ";
+    if (move.is_castle() && move.castle_side() == CastleSide::Kingside) {
+        ss << "kingside";
+    } else if (move.is_castle() && move.castle_side() == CastleSide::Queenside) {
+        ss << "queenside";
+    } else {
+        ss << "-";
+    }
+    ss << "\n";
+
+    return ss.str();
+}
+
 std::string GameState::to_fen() const { return fen::to_fen(*this); }
 std::optional<GameState> GameState::from_fen(std::string_view fen_sv) { return fen::from_fen(fen_sv); }
 
@@ -90,14 +223,14 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
     // Check that the piece at the start location is the same color as the turn to move
     if (game_state.board().piece_at(move.start_location()) != move.moving_piece()) {
         log::debug("Move {} does not seem to fit the board right (expected: {})",
-            move.to_short_algebraic_notation(),
+            game_state.san_notation(move),
             game_state.board().piece_at(move.start_location()).to_letter());
         return {};
     }
 
     // Make sure this move is actually legal
     if (!game_state.move_set().is_legal_move(move)) {
-        log::debug("Move {} is not a listed legal move", move.to_short_algebraic_notation());
+        log::debug("Move {} is not a listed legal move", game_state.san_notation(move));
         return {};
     }
 
@@ -121,7 +254,7 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
             auto captured_piece = Piece(Piece::Type::Pawn, other_color);
             buffer.occupancy_for(captured_piece).unset(game_state.en_passant_target().value());
         } else {
-            log::debug("Move {} is invalid because there is no en passant target", move.to_short_algebraic_notation());
+            log::debug("Move {} is invalid because there is no en passant target", game_state.san_notation(move));
             return {};
         }
     } else if (move.is_capture()) {
@@ -137,6 +270,19 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
     Board board(std::move(buffer));
 
     return GameState(std::move(board), other_color, game_state.castle_rights(), {});
+}
+
+static std::optional<GameState> by_performing_moves(const GameState& gs, std::span<const Move> moves)
+{
+    auto itr = moves.begin();
+    std::optional<GameState> current = gs;
+
+    while (itr != moves.end() && current.has_value()) {
+        current = GameState::by_performing_move(current.value(), *itr);
+        itr++;
+    }
+
+    return current;
 }
 
 } // namespace weechess

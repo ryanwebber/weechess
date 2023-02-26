@@ -86,6 +86,7 @@
         "algorithm": "cpp",
         "ranges": "cpp",
         "filesystem": "cpp",
-        "__memory": "cpp"
+        "__memory": "cpp",
+        "__availability": "cpp"
     }
 }

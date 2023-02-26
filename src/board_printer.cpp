@@ -44,8 +44,8 @@ BoardPrinter::Cell BoardPrinter::operator[](weechess::Location location)
 BoardPrinter::Cell BoardPrinter::cell_at(size_t row, size_t col) { return Cell(*this, row * col_char_count + col); }
 
 BoardPrinter::Cell::Cell(BoardPrinter& printer, size_t offset)
-    : m_printer(printer)
-    , m_offset(offset)
+    : m_offset(offset)
+    , m_printer(printer)
 {
 }
 

@@ -1,8 +1,14 @@
+#include <weechess/game_state.h>
 #include <weechess/move.h>
 
 namespace weechess {
 
 Move::Move() { }
+
+Move::Move(Data data)
+    : m_data(data)
+{
+}
 
 Piece Move::moving_piece() const
 {
@@ -56,9 +62,24 @@ bool Move::is_capture() const { return get_flags(Flags::Capture) != 0; }
 bool Move::is_en_passant() const { return get_flags(Flags::EnPassant) != 0; }
 bool Move::is_double_pawn() const { return get_flags(Flags::DoublePawn) != 0; }
 bool Move::is_promotion() const { return (get_flags(Flags::Promotion) & 0b1000) != 0; }
+bool Move::is_castle() const
+{
+    return (get_flags(Flags::KingsideCastle) != 0) || (get_flags(Flags::QueensideCastle) != 0);
+}
 
 Piece::Type Move::captured_piece_type() const { return static_cast<Piece::Type>(get_flags(Flags::Capture)); }
 Piece::Type Move::promoted_piece_type() const { return static_cast<Piece::Type>(0b0111 & get_flags(Flags::Promotion)); }
+
+std::optional<CastleSide> Move::castle_side() const
+{
+    if (get_flags(Flags::KingsideCastle) != 0) {
+        return CastleSide::Kingside;
+    } else if (get_flags(Flags::QueensideCastle) != 0) {
+        return CastleSide::Queenside;
+    } else {
+        return {};
+    }
+}
 
 Move Move::by_moving(Piece piece, Location from, Location to)
 {
@@ -92,17 +113,7 @@ Move Move::by_en_passant(Piece piece, Location from, Location to)
     return move;
 }
 
-std::string Move::to_short_algebraic_notation() const
-{
-    std::string result;
-    result += start_location().to_string();
-    result += " -> ";
-    result += end_location().to_string();
-    result += " (";
-    result += moving_piece().to_letter();
-    result += ")";
-    return result;
-}
+std::string Move::san_notation(const GameState& gs) const { return gs.san_notation(*this); }
 
 bool operator==(const Move& lhs, const Move& rhs) { return lhs.m_data == rhs.m_data; }
 

@@ -60,11 +60,15 @@ public:
 
     const MoveSet& move_set() const;
 
+    std::string san_notation(const Move&) const;
+    std::string verbose_description(const Move&) const;
+
     std::string to_fen() const;
 
     static std::optional<GameState> from_fen(std::string_view);
     static GameState new_game();
     static std::optional<GameState> by_performing_move(const GameState&, const Move&);
+    static std::optional<GameState> by_performing_moves(const GameState&, std::span<const Move>);
 
 private:
     Board m_board;

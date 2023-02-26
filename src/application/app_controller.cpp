@@ -77,6 +77,9 @@ AppController::AppController()
             m_view_state.pinned_location = {};
         };
 
+        // TODO: Remove this
+        (void)try_perform_move;
+
         if (event.is_mouse() && event.mouse().button == ftxui::Mouse::Button::Left
             && event.mouse().motion == ftxui::Mouse::Motion::Released) {
             if (m_view_state.chess_window_bounds.Contain(event.mouse().x, event.mouse().y)) {
@@ -94,10 +97,9 @@ AppController::AppController()
                     m_view_state.highlighted_location = weechess::Location::from_rank_and_file(rank, file);
 
                     if (m_view_state.pinned_location.has_value()) {
-                        auto from = m_view_state.pinned_location.value();
-                        auto to = m_view_state.highlighted_location;
-
                         // TODO: Find this move and apply it
+                        // auto from = m_view_state.pinned_location.value();
+                        // auto to = m_view_state.highlighted_location;
                         assert(false);
                     } else {
                         m_view_state.pinned_location = m_view_state.highlighted_location;
@@ -168,10 +170,9 @@ AppController::AppController()
             // Handle pressing enter to pin the location
             if (event == ftxui::Event::Return) {
                 if (m_view_state.pinned_location.has_value()) {
-                    auto from = m_view_state.pinned_location.value();
-                    auto to = m_view_state.highlighted_location;
-
                     // TODO: Find this move and apply it
+                    // auto from = m_view_state.pinned_location.value();
+                    // auto to = m_view_state.highlighted_location;
                     assert(false);
                 } else {
                     m_view_state.pinned_location = m_view_state.highlighted_location;

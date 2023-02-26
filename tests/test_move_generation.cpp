@@ -8,7 +8,7 @@
 #include <weechess/move_generator.h>
 
 // Simple perft implementation - this should be a command
-uint64_t do_perft(weechess::GameState gs, int depth)
+uint64_t do_perft(weechess::GameState gs, int depth, bool print = false)
 {
     if (depth == 0) {
         return 1;
@@ -19,7 +19,13 @@ uint64_t do_perft(weechess::GameState gs, int depth)
     uint64_t count = 0;
     for (const auto& move : gs.move_set().legal_moves()) {
         auto new_gs = weechess::GameState::by_performing_move(gs, move).value();
-        count += do_perft(new_gs, depth - 1);
+        auto result = do_perft(new_gs, depth - 1);
+        count += result;
+
+        if (print) {
+            // UNSCOPED_INFO("Perft[" << depth << "] = " << result << "\n" << gs.verbose_description(move) << "\n\n");
+            UNSCOPED_INFO(gs.san_notation(move) << ": " << result << "\n");
+        }
     }
 
     return count;
@@ -33,12 +39,7 @@ TEST_CASE("Perft move generation counts", "[movegen]")
     {
         // https://www.chessprogramming.org/Perft_Results#Position_5
         auto gs = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
-
-        CHECK(do_perft(gs, 1) == 44);
-        CHECK(do_perft(gs, 2) == 1486);
-        CHECK(do_perft(gs, 3) == 62379);
-        CHECK(do_perft(gs, 4) == 2103487);
-        CHECK(do_perft(gs, 5) == 89941194);
+        CHECK(do_perft(gs, 5, true) == 89941194);
     }
 }
 

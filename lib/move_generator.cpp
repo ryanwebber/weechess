@@ -43,6 +43,8 @@ namespace {
 
         std::optional<Location> en_passant_target() const { return m_request.en_passant_target(); }
 
+        CastleRights castle_rights_to_move() const { return m_request.castle_rights()[color_to_move()]; }
+
         Location forward(Location location) const
         {
             if (m_request.turn_to_move() == Color::White)
@@ -268,6 +270,17 @@ namespace {
             auto origin = kings.pop_lsb().value();
             auto jumps = k_king_attacks[origin.offset] & (helper.attackable() | helper.board().non_occupancy());
             expand_moves(helper, moves, origin, jumps, Piece::Type::King);
+        }
+
+        // TODO: Check checks and piece validity
+        return;
+
+        if (helper.castle_rights_to_move().can_castle_kingside) {
+            moves.push_back(Move::by_castling(helper.piece_to_move(Piece::Type::King), CastleSide::Kingside));
+        }
+
+        if (helper.castle_rights_to_move().can_castle_queenside) {
+            moves.push_back(Move::by_castling(helper.piece_to_move(Piece::Type::King), CastleSide::Queenside));
         }
     }
 

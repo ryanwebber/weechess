@@ -15,11 +15,14 @@ enum class CastleSide {
     Queenside,
 };
 
+class GameState;
+
 class Move {
 public:
     using Data = std::bitset<32>;
 
     Move(const Move&) = default;
+    Move(Data data);
 
     Piece moving_piece() const;
     Piece resulting_piece() const;
@@ -50,8 +53,9 @@ public:
 
     Piece::Type captured_piece_type() const;
     Piece::Type promoted_piece_type() const;
+    std::optional<CastleSide> castle_side() const;
 
-    std::string to_short_algebraic_notation() const;
+    std::string san_notation(const GameState&) const;
 
     friend bool operator==(const Move&, const Move&);
 

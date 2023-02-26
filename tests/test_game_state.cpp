@@ -20,7 +20,7 @@ TEST_CASE("Applying moves to game states", "[rules]")
 
         for (const auto& move : moves) {
             const auto& gs_prime = GameState::by_performing_move(gs, move);
-            INFO("Performing move: " << moves[0].to_short_algebraic_notation());
+            INFO(gs.verbose_description(move));
             CHECK(gs_prime.has_value());
         }
     }
