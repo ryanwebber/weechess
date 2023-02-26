@@ -151,6 +151,7 @@ set(TEST_SOURCES
         tests/main.cpp
         tests/test_bit_board.cpp
         tests/test_fen.cpp
+        tests/test_game_state.cpp
         tests/test_move_generation.cpp
         tests/test_move.cpp
         )

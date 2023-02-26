@@ -5,7 +5,7 @@
 
 #include <weechess/move.h>
 
-TEST_CASE("Move binary packing", "")
+TEST_CASE("Move binary packing")
 {
     using namespace weechess;
 

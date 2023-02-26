@@ -36,6 +36,7 @@ void Move::set_origin(Location location) { set_flags(Flags::Origin, location.off
 void Move::set_destination(Location location) { set_flags(Flags::Destination, location.offset); }
 void Move::set_capture(Piece::Type type) { set_flags(Flags::Capture, static_cast<uint32_t>(type)); }
 void Move::set_promotion(Piece::Type type) { set_flags(Flags::Promotion, static_cast<uint32_t>(type)); }
+void Move::set_double_pawn_push() { set_flags(Flags::DoublePawn, 1); }
 
 Location Move::start_location() const { return Location(get_flags(Flags::Origin)); }
 Location Move::end_location() const { return Location(get_flags(Flags::Destination)); }
@@ -68,14 +69,6 @@ Move Move::by_capturing(Piece piece, Location from, Location to, Piece::Type cap
 Move Move::by_promoting(Piece piece, Location from, Location to, Piece::Type promotion)
 {
     Move move = by_moving(piece, from, to);
-    move.set_promotion(promotion);
-    return move;
-}
-
-Move Move::by_capture_promoting(Piece piece, Location from, Location to, Piece::Type captured, Piece::Type promotion)
-{
-    Move move = by_moving(piece, from, to);
-    move.set_capture(captured);
     move.set_promotion(promotion);
     return move;
 }

@@ -10,15 +10,15 @@
 
 namespace weechess::fen {
 constexpr const char* regex_string
-    = R"(^(((?:[rnbqkpRNBQKP1-8]+\/){7})[rnbqkpRNBQKP1-8]+)\s([b|w])\s([K|Q|k|q]{1,4})\s(-|[a-h][1-8])\s(\d+\s\d+)$)";
+    = R"(^(((?:[rnbqkpRNBQKP1-8]+\/){7})[rnbqkpRNBQKP1-8]+)\s([b|w])\s(-|([K|Q|k|q]{1,4}))\s(-|[a-h][1-8])\s(\d+\s\d+)$)";
 
 namespace groups {
-    constexpr size_t count = 7;
+    constexpr size_t count = 8;
 
     constexpr size_t board = 1;
     constexpr size_t turn_to_move = 3;
     constexpr size_t castle_rights = 4;
-    constexpr size_t en_passant_target = 5;
+    constexpr size_t en_passant_target = 6;
 }
 
 constexpr char white_pawn = 'P';
@@ -42,7 +42,6 @@ std::optional<char> piece_to_fen(const Piece& piece);
 
 std::string to_fen(const GameState& game_state)
 {
-
     auto cells = game_state.board().to_array();
     auto turn_to_move = game_state.turn_to_move();
     auto castle_rights = game_state.castle_rights();
@@ -105,12 +104,12 @@ std::string to_fen(const GameState& game_state)
 
 std::optional<GameState> from_fen(std::string_view fen_sv)
 {
-
     std::regex re(regex_string);
     std::match_results<std::string_view::const_iterator> match;
     auto flags = std::regex_constants::match_default;
 
     if (!std::regex_match(fen_sv.begin(), fen_sv.end(), match, re, flags)) {
+        log::debug("Invalid FEN string: {}", fen_sv);
         return {};
     }
 
@@ -148,6 +147,7 @@ std::optional<Board> board_from_fen_fragment(std::string_view fragment)
             builder[corrected.offset] = piece.value();
             i++;
         } else {
+            log::debug("Unexpected character in FEN string fragment: {} ({})", c, fragment);
             return {};
         }
     }
@@ -188,6 +188,7 @@ std::optional<Location> location_from_fen_fragment(std::string_view fragment)
     char rank = fragment[1];
 
     if (file < 'a' || file > 'h' || rank < '1' || rank > '8') {
+        log::debug("Unexpected location in FEN string fragment: {}", fragment);
         return {};
     }
 
@@ -222,6 +223,7 @@ std::optional<Piece> piece_from_fen(char c)
     case black_king:
         return Piece(Piece::Type::King, Color::Black);
     default:
+        log::debug("Unexpected piece type in FEN string fragment: {}", c);
         return {};
     }
 }

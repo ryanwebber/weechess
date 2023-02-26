@@ -9,6 +9,14 @@
 namespace weechess {
 
 namespace {
+
+    constexpr std::array<Piece::Type, 4> promotion_types = {
+        Piece::Type::Queen,
+        Piece::Type::Rook,
+        Piece::Type::Bishop,
+        Piece::Type::Knight,
+    };
+
     const std::array<BitBoard, 64> k_knight_attacks = comptime::compute_knight_attacks();
     const std::array<BitBoard, 64> k_king_attacks = comptime::compute_king_attacks();
 
@@ -30,6 +38,7 @@ namespace {
 
         const Board& board() const { return m_request.board(); }
 
+        Color color_to_move() const { return m_request.turn_to_move(); }
         Piece piece_to_move(Piece::Type type) const { return Piece(type, m_request.turn_to_move()); }
 
         std::optional<Location> en_passant_target() const { return m_request.en_passant_target(); }
@@ -130,8 +139,7 @@ namespace {
         BitBoard attackable() const
         {
             auto other_color = invert_color(m_request.turn_to_move());
-            return m_request.board().color_occupancy()[other_color]
-                & ~(m_request.board().occupancy_for(Piece(Piece::Type::King, other_color)));
+            return m_request.board().color_occupancy()[other_color];
         }
 
         BitBoard en_passant_mask() const
@@ -163,6 +171,25 @@ namespace {
         return k_bishop_magic_table[location.offset][key];
     }
 
+    void expand_moves(
+        const Helper& helper, std::vector<Move>& moves, Location origin, BitBoard targets, Piece::Type type)
+    {
+        auto piece = helper.piece_to_move(type);
+        auto attacks = helper.attackable() & targets;
+        while (attacks.any()) {
+            auto target = attacks.pop_lsb().value();
+            auto move = Move::by_capturing(piece, origin, target, helper.board().piece_at(target).type());
+            moves.push_back(move);
+        }
+
+        auto non_attacks = ~helper.attackable() & targets;
+        while (non_attacks.any()) {
+            auto target = non_attacks.pop_lsb().value();
+            auto move = Move::by_moving(piece, origin, target);
+            moves.push_back(move);
+        }
+    }
+
     void generate_pawn_moves(const Helper& helper, std::vector<Move>& moves)
     {
 
@@ -186,10 +213,9 @@ namespace {
             // Promotion moves
             while (promotion_positions.any()) {
                 auto target = promotion_positions.pop_lsb().value();
-                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Queen));
-                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Bishop));
-                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Rook));
-                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Knight));
+                for (const auto& type : promotion_types) {
+                    moves.push_back(Move::by_promoting(piece, helper.backward(target), target, type));
+                }
             }
         }
 
@@ -202,6 +228,7 @@ namespace {
             while (double_moves.any()) {
                 auto target = double_moves.pop_lsb().value();
                 auto move = Move::by_moving(piece, helper.backward(helper.backward(target)), target);
+                move.set_double_pawn_push();
                 moves.push_back(move);
             }
         }
@@ -230,14 +257,11 @@ namespace {
                 while (attacks.any()) {
                     auto target = attacks.pop_lsb().value();
                     auto capture = helper.board().piece_at(target).type();
-                    moves.push_back(Move::by_capture_promoting(
-                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Queen));
-                    moves.push_back(Move::by_capture_promoting(
-                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Bishop));
-                    moves.push_back(Move::by_capture_promoting(
-                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Rook));
-                    moves.push_back(Move::by_capture_promoting(
-                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Knight));
+                    for (const auto& type : promotion_types) {
+                        auto move = Move::by_promoting(piece, helper.backward(target), target, type);
+                        move.set_capture(capture);
+                        moves.push_back(move);
+                    }
                 }
 
                 // En passant captures
@@ -249,10 +273,74 @@ namespace {
         }
     }
 
+    void generate_knight_moves(const Helper& helper, std::vector<Move>& moves)
+    {
+        auto knights = helper.occupancy_to_move(Piece::Type::Knight);
+        while (knights.any()) {
+            auto origin = knights.pop_lsb().value();
+            auto jumps = k_knight_attacks[origin.offset] & (helper.attackable() | helper.board().non_occupancy());
+            expand_moves(helper, moves, origin, jumps, Piece::Type::Knight);
+        }
+    }
+
+    void generate_king_moves(const Helper& helper, std::vector<Move>& moves)
+    {
+        auto kings = helper.occupancy_to_move(Piece::Type::King);
+        while (kings.any()) {
+            auto origin = kings.pop_lsb().value();
+            auto jumps = k_king_attacks[origin.offset] & (helper.attackable() | helper.board().non_occupancy());
+            expand_moves(helper, moves, origin, jumps, Piece::Type::King);
+        }
+    }
+
+    void generate_bishop_moves(const Helper& helper, std::vector<Move>& moves)
+    {
+        auto occupancy = helper.board().shared_occupancy();
+        auto bishops = helper.occupancy_to_move(Piece::Type::Bishop);
+        auto own_pieces = helper.board().color_occupancy()[helper.color_to_move()];
+        while (bishops.any()) {
+            auto origin = bishops.pop_lsb().value();
+            auto attacks = generate_bishop_attacks(origin, occupancy);
+            auto slides = attacks & ~own_pieces;
+            expand_moves(helper, moves, origin, slides, Piece::Type::Bishop);
+        }
+    }
+
+    void generate_rook_moves(const Helper& helper, std::vector<Move>& moves)
+    {
+        auto occupancy = helper.board().shared_occupancy();
+        auto rooks = helper.occupancy_to_move(Piece::Type::Rook);
+        auto own_pieces = helper.board().color_occupancy()[helper.color_to_move()];
+        while (rooks.any()) {
+            auto origin = rooks.pop_lsb().value();
+            auto attacks = generate_rook_attacks(origin, occupancy);
+            auto slides = attacks & ~own_pieces;
+            expand_moves(helper, moves, origin, slides, Piece::Type::Rook);
+        }
+    }
+
+    void generate_queen_moves(const Helper& helper, std::vector<Move>& moves)
+    {
+        auto occupancy = helper.board().shared_occupancy();
+        auto queens = helper.occupancy_to_move(Piece::Type::Queen);
+        auto own_pieces = helper.board().color_occupancy()[helper.color_to_move()];
+        while (queens.any()) {
+            auto origin = queens.pop_lsb().value();
+            auto attacks = generate_bishop_attacks(origin, occupancy) | generate_rook_attacks(origin, occupancy);
+            auto slides = attacks & ~own_pieces;
+            expand_moves(helper, moves, origin, slides, Piece::Type::Queen);
+        }
+    }
+
     void generate_legal_moves(const MoveGenerator::Request& request, std::vector<Move>& moves)
     {
         Helper helper(request);
         generate_pawn_moves(helper, moves);
+        generate_knight_moves(helper, moves);
+        generate_king_moves(helper, moves);
+        generate_bishop_moves(helper, moves);
+        generate_rook_moves(helper, moves);
+        generate_queen_moves(helper, moves);
     }
 }
 

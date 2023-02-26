@@ -2,7 +2,7 @@
 #include <sstream>
 #include <weechess/bit_board.h>
 
-TEST_CASE("Least significant bit math", "[bitboard]")
+TEST_CASE("Least-significant-bit bit twiddling", "[bitboard]")
 {
     using namespace weechess;
 
@@ -49,7 +49,7 @@ TEST_CASE("Least significant bit math", "[bitboard]")
     CHECK(!bb0.lsb().has_value());
 }
 
-TEST_CASE("BitBoard ostream formatting", "[bitboard]")
+TEST_CASE("BitBoard string formatting", "[bitboard]")
 {
     using namespace weechess;
 

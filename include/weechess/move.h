@@ -27,7 +27,6 @@ public:
     static Move by_moving(Piece, Location from, Location to);
     static Move by_capturing(Piece, Location from, Location to, Piece::Type captured);
     static Move by_promoting(Piece, Location from, Location to, Piece::Type promoted);
-    static Move by_capture_promoting(Piece, Location from, Location to, Piece::Type captured, Piece::Type promoted);
     static Move by_castling(Piece, CastleSide);
     static Move by_en_passant(Piece, Location from, Location to);
 
@@ -39,6 +38,15 @@ public:
     bool is_castle() const;
     bool is_en_passant() const;
     bool is_double_pawn() const;
+
+    void set_color(Color color);
+    void set_piece_type(Piece::Type type);
+    void set_origin(Location location);
+    void set_destination(Location location);
+    void set_capture(Piece::Type type);
+    void set_promotion(Piece::Type type);
+    void set_castle_side(CastleSide);
+    void set_double_pawn_push();
 
     Piece::Type captured_piece_type() const;
     Piece::Type promoted_piece_type() const;
@@ -93,13 +101,6 @@ private:
     Color get_color() const;
 
     void set_flags(Flags flags, uint32_t value);
-    void set_color(Color color);
-    void set_piece_type(Piece::Type type);
-    void set_origin(Location location);
-    void set_destination(Location location);
-    void set_capture(Piece::Type type);
-    void set_promotion(Piece::Type type);
-    void set_castle_side(CastleSide);
 
     Data m_data;
 };
