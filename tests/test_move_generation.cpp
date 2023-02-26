@@ -32,10 +32,13 @@ TEST_CASE("Make a legal move", "[rules]")
     auto gs = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
 
     const auto& moves = gs.move_set().legal_moves();
-    CHECK(moves.size() == 5);
-    const auto& gs_prime = GameState::by_performing_move(gs, moves[0]);
-    INFO("Move is: " << moves[0].to_short_algebraic_notation());
-    CHECK(gs_prime.has_value());
+    CHECK(moves.size() != 0);
+
+    for (const auto& move : moves) {
+        const auto& gs_prime = GameState::by_performing_move(gs, move);
+        INFO("Performing move: " << moves[0].to_short_algebraic_notation());
+        CHECK(gs_prime.has_value());
+    }
 }
 
 TEST_CASE("Legal move generation", "[rules]")

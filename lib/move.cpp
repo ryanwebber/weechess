@@ -34,9 +34,19 @@ void Move::set_color(Color color) { set_flags(Flags::Color, color == Color::Whit
 void Move::set_piece_type(Piece::Type type) { set_flags(Flags::PieceType, static_cast<uint32_t>(type)); }
 void Move::set_origin(Location location) { set_flags(Flags::Origin, location.offset); }
 void Move::set_destination(Location location) { set_flags(Flags::Destination, location.offset); }
+void Move::set_capture(Piece::Type type) { set_flags(Flags::Capture, static_cast<uint32_t>(type)); }
+void Move::set_promotion(Piece::Type type) { set_flags(Flags::Promotion, static_cast<uint32_t>(type)); }
 
 Location Move::start_location() const { return Location(get_flags(Flags::Origin)); }
 Location Move::end_location() const { return Location(get_flags(Flags::Destination)); }
+
+bool Move::is_capture() const { return get_flags(Flags::Capture) != 0; }
+bool Move::is_promotion() const { return get_flags(Flags::Promotion) != 0; }
+bool Move::is_en_passant() const { return get_flags(Flags::EnPassant) != 0; }
+bool Move::is_double_pawn() const { return get_flags(Flags::DoublePawn) != 0; }
+
+Piece::Type Move::captured_piece_type() const { return static_cast<Piece::Type>(get_flags(Flags::Capture)); }
+Piece::Type Move::promoted_piece_type() const { return static_cast<Piece::Type>(get_flags(Flags::Promotion)); }
 
 Move Move::by_moving(Piece piece, Location from, Location to)
 {
@@ -45,6 +55,36 @@ Move Move::by_moving(Piece piece, Location from, Location to)
     move.set_origin(from);
     move.set_destination(to);
     move.set_color(piece.color());
+    return move;
+}
+
+Move Move::by_capturing(Piece piece, Location from, Location to, Piece::Type captured)
+{
+    Move move = by_moving(piece, from, to);
+    move.set_capture(captured);
+    return move;
+}
+
+Move Move::by_promoting(Piece piece, Location from, Location to, Piece::Type promotion)
+{
+    Move move = by_moving(piece, from, to);
+    move.set_promotion(promotion);
+    return move;
+}
+
+Move Move::by_capture_promoting(Piece piece, Location from, Location to, Piece::Type captured, Piece::Type promotion)
+{
+    Move move = by_moving(piece, from, to);
+    move.set_capture(captured);
+    move.set_promotion(promotion);
+    return move;
+}
+
+Move Move::by_en_passant(Piece piece, Location from, Location to)
+{
+    Move move = by_moving(piece, from, to);
+    move.set_flags(Flags::EnPassant, 1);
+    move.set_capture(Piece::Type::Pawn);
     return move;
 }
 

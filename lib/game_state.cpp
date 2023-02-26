@@ -85,6 +85,8 @@ GameState GameState::new_game() { return GameState::from_fen(fen::initial_gamest
 
 std::optional<GameState> GameState::by_performing_move(const GameState& game_state, const Move& move)
 {
+    auto other_color = invert_color(game_state.turn_to_move());
+
     // Check that the piece at the start location is the same color as the turn to move
     if (game_state.board().piece_at(move.start_location()) != move.moving_piece()) {
         log::debug("Move {} does not seem to fit the board right (expected: {})",
@@ -114,11 +116,27 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
     buffer.occupancy_for(moving_piece).unset(move.start_location());
     buffer.occupancy_for(resulting_piece).set(move.end_location());
 
-    // TODO: Handle captures by removing stuff off the other color board
+    if (move.is_en_passant()) {
+        if (game_state.en_passant_target().has_value()) {
+            auto captured_piece = Piece(Piece::Type::Pawn, other_color);
+            buffer.occupancy_for(captured_piece).unset(game_state.en_passant_target().value());
+        } else {
+            log::debug("Move {} is invalid because there is no en passant target", move.to_short_algebraic_notation());
+            return {};
+        }
+    } else if (move.is_capture()) {
+        auto captured_piece = Piece(move.captured_piece_type(), other_color);
+        buffer.occupancy_for(captured_piece).unset(move.end_location());
+    }
+
+    if (move.is_promotion()) {
+        buffer.occupancy_for(moving_piece).unset(move.end_location());
+        buffer.occupancy_for(resulting_piece).set(move.end_location());
+    }
 
     Board board(std::move(buffer));
 
-    return GameState(std::move(board), invert_color(game_state.turn_to_move()), game_state.castle_rights(), {});
+    return GameState(std::move(board), other_color, game_state.castle_rights(), {});
 }
 
 } // namespace weechess

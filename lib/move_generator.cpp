@@ -32,6 +32,8 @@ namespace {
 
         Piece piece_to_move(Piece::Type type) const { return Piece(type, m_request.turn_to_move()); }
 
+        std::optional<Location> en_passant_target() const { return m_request.en_passant_target(); }
+
         Location forward(Location location) const
         {
             if (m_request.turn_to_move() == Color::White)
@@ -48,6 +50,22 @@ namespace {
                 return location.offset_by(Location::Up).value();
         }
 
+        Location left(Location location) const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return location.offset_by(Location::Left).value();
+            else
+                return location.offset_by(Location::Right).value();
+        }
+
+        Location right(Location location) const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return location.offset_by(Location::Right).value();
+            else
+                return location.offset_by(Location::Left).value();
+        }
+
         BitBoard backrank_mask() const
         {
             if (m_request.turn_to_move() == Color::White)
@@ -56,17 +74,74 @@ namespace {
                 return comptime::rank_mask[comptime::_1st_Rank];
         }
 
+        BitBoard home_rank_mask(int rank) const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return comptime::rank_mask[comptime::_1st_Rank] << (8 * (rank - 1));
+            else
+                return comptime::rank_mask[comptime::_8th_Rank] >> (8 * (rank - 1));
+        }
+
+        BitBoard left_file_mask() const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return comptime::file_mask[comptime::A_File];
+            else
+                return comptime::file_mask[comptime::H_File];
+        }
+
+        BitBoard right_file_mask() const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return comptime::file_mask[comptime::H_File];
+            else
+                return comptime::file_mask[comptime::A_File];
+        }
+
         BitBoard shift_forward(BitBoard bb) const
         {
             if (m_request.turn_to_move() == Color::White)
-                return BitBoard(bb.data() << 8);
+                return bb << 8;
             else
-                return BitBoard(bb.data() >> 8);
+                return bb >> 8;
+        }
+
+        BitBoard shift_left(BitBoard bb) const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return (bb & ~comptime::file_mask[comptime::A_File]) >> 1;
+            else
+                return (bb & ~comptime::file_mask[comptime::H_File]) << 1;
+        }
+
+        BitBoard shift_right(BitBoard bb) const
+        {
+            if (m_request.turn_to_move() == Color::White)
+                return (bb & ~comptime::file_mask[comptime::H_File]) >> 1;
+            else
+                return (bb & ~comptime::file_mask[comptime::A_File]) << 1;
         }
 
         BitBoard occupancy_to_move(Piece::Type type) const
         {
             return m_request.board().occupancy_for(Piece(type, m_request.turn_to_move()));
+        }
+
+        BitBoard attackable() const
+        {
+            auto other_color = invert_color(m_request.turn_to_move());
+            return m_request.board().color_occupancy()[other_color]
+                & ~(m_request.board().occupancy_for(Piece(Piece::Type::King, other_color)));
+        }
+
+        BitBoard en_passant_mask() const
+        {
+            BitBoard bb;
+            if (m_request.en_passant_target().has_value()) {
+                bb.set(m_request.en_passant_target().value());
+            }
+
+            return bb;
         }
     };
 
@@ -90,18 +165,87 @@ namespace {
 
     void generate_pawn_moves(const Helper& helper, std::vector<Move>& moves)
     {
-        Piece piece = helper.piece_to_move(Piece::Type::Pawn);
-        BitBoard positions = helper.shift_forward(helper.occupancy_to_move(Piece::Type::Pawn));
-        positions &= helper.board().non_occupancy();
 
-        BitBoard promotion_positions = positions & helper.backrank_mask();
-        BitBoard non_promotion_positions = positions & ~helper.backrank_mask();
+        Piece piece = helper.piece_to_move(Piece::Type::Pawn);
 
         // Single step forward moves
-        while (non_promotion_positions.any()) {
-            auto target = non_promotion_positions.pop_lsb().value();
-            auto move = Move::by_moving(piece, helper.backward(target), target);
-            moves.push_back(move);
+        {
+            BitBoard positions = helper.shift_forward(helper.occupancy_to_move(Piece::Type::Pawn));
+            positions &= helper.board().non_occupancy();
+
+            BitBoard promotion_positions = positions & helper.backrank_mask();
+            BitBoard non_promotion_positions = positions & ~helper.backrank_mask();
+
+            // Non-promotion moves
+            while (non_promotion_positions.any()) {
+                auto target = non_promotion_positions.pop_lsb().value();
+                auto move = Move::by_moving(piece, helper.backward(target), target);
+                moves.push_back(move);
+            }
+
+            // Promotion moves
+            while (promotion_positions.any()) {
+                auto target = promotion_positions.pop_lsb().value();
+                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Queen));
+                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Bishop));
+                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Rook));
+                moves.push_back(Move::by_promoting(piece, helper.backward(target), target, Piece::Type::Knight));
+            }
+        }
+
+        // Two steps froward
+        {
+            BitBoard pawns = helper.occupancy_to_move(Piece::Type::Pawn) & helper.home_rank_mask(2);
+            BitBoard non_occupancy = helper.board().non_occupancy();
+            BitBoard single_moves = helper.shift_forward(pawns) & non_occupancy;
+            BitBoard double_moves = helper.shift_forward(single_moves) & non_occupancy;
+            while (double_moves.any()) {
+                auto target = double_moves.pop_lsb().value();
+                auto move = Move::by_moving(piece, helper.backward(helper.backward(target)), target);
+                moves.push_back(move);
+            }
+        }
+
+        // Captures
+        {
+            BitBoard pawns = helper.occupancy_to_move(Piece::Type::Pawn);
+
+            // Left captures
+            {
+                BitBoard attacks = helper.shift_left(helper.shift_forward(pawns)) & helper.attackable();
+                BitBoard attacks_with_promotion = attacks & helper.backrank_mask();
+                BitBoard en_passant_attacks = helper.shift_left(helper.shift_forward(pawns)) & helper.en_passant_mask();
+
+                attacks &= ~helper.backrank_mask();
+
+                // Regular captures
+                while (attacks.any()) {
+                    auto target = attacks.pop_lsb().value();
+                    auto origin = helper.backward(helper.right(target));
+                    auto move = Move::by_capturing(piece, origin, target, helper.board().piece_at(target).type());
+                    moves.push_back(move);
+                }
+
+                // Promotion captures
+                while (attacks.any()) {
+                    auto target = attacks.pop_lsb().value();
+                    auto capture = helper.board().piece_at(target).type();
+                    moves.push_back(Move::by_capture_promoting(
+                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Queen));
+                    moves.push_back(Move::by_capture_promoting(
+                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Bishop));
+                    moves.push_back(Move::by_capture_promoting(
+                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Rook));
+                    moves.push_back(Move::by_capture_promoting(
+                        piece, helper.backward(helper.right(target)), target, capture, Piece::Type::Knight));
+                }
+
+                // En passant captures
+                if (en_passant_attacks.any()) {
+                    auto target = helper.en_passant_target().value();
+                    moves.push_back(Move::by_en_passant(piece, helper.backward(helper.right(target)), target));
+                }
+            }
         }
     }
 

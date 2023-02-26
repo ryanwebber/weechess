@@ -35,6 +35,9 @@ public:
     constexpr void operator|=(const BitBoard& other) { m_data |= other.m_data; }
     constexpr void operator&=(const BitBoard& other) { m_data &= other.m_data; }
 
+    constexpr BitBoard operator<<(int8_t shift) const { return BitBoard(m_data << shift); }
+    constexpr BitBoard operator>>(int8_t shift) const { return BitBoard(m_data >> shift); }
+
     constexpr bool all() const { return m_data == ~0ull; }
     constexpr bool any() const { return m_data != 0; }
     constexpr bool none() const { return m_data == 0; }
