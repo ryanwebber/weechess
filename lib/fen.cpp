@@ -10,15 +10,17 @@
 
 namespace weechess::fen {
 constexpr const char* regex_string
-    = R"(^(((?:[rnbqkpRNBQKP1-8]+\/){7})[rnbqkpRNBQKP1-8]+)\s([b|w])\s(-|([K|Q|k|q]{1,4}))\s(-|[a-h][1-8])\s(\d+\s\d+)$)";
+    = R"(^(((?:[rnbqkpRNBQKP1-8]+\/){7})[rnbqkpRNBQKP1-8]+)\s([b|w])\s(-|([K|Q|k|q]{1,4}))\s(-|[a-h][1-8])\s(\d+)\s(\d+)$)";
 
 namespace groups {
-    constexpr size_t count = 8;
+    constexpr size_t count = 9;
 
     constexpr size_t board = 1;
     constexpr size_t turn_to_move = 3;
     constexpr size_t castle_rights = 4;
     constexpr size_t en_passant_target = 6;
+    constexpr size_t half_move_clock = 7;
+    constexpr size_t full_move_number = 8;
 }
 
 constexpr char white_pawn = 'P';
@@ -51,6 +53,9 @@ std::string to_fen(const GameState& game_state)
     uint8_t space_count = 0;
     for (size_t i = 0; i < Board::cell_count; i++) {
 
+        Location l(i);
+        Location corrected = Location::from_rank_and_file(7 - l.rank(), l.file());
+
         if (i % 8 == 0 && i != 0) {
             if (space_count > 0) {
                 fen_str += std::to_string(space_count);
@@ -60,7 +65,7 @@ std::string to_fen(const GameState& game_state)
             fen_str += '/';
         }
 
-        auto fen_char = piece_to_fen(cells[i]);
+        auto fen_char = piece_to_fen(cells[corrected.offset]);
         if (fen_char.has_value()) {
             if (space_count > 0) {
                 fen_str += std::to_string(space_count);
@@ -97,7 +102,8 @@ std::string to_fen(const GameState& game_state)
         fen_str += "-";
     }
 
-    fen_str += " 0 1";
+    fen_str += " " + std::to_string(game_state.halfmove_clock());
+    fen_str += " " + std::to_string(game_state.fullmove_number());
 
     return fen_str;
 }
@@ -121,13 +127,18 @@ std::optional<GameState> from_fen(std::string_view fen_sv)
     std::string turn_to_move_string(match[groups::turn_to_move].str());
     std::string castle_rights_string(match[groups::castle_rights].str());
     std::string en_passant_target_string(match[groups::en_passant_target].str());
+    std::string half_move_clock_string(match[groups::half_move_clock].str());
+    std::string full_move_number_string(match[groups::full_move_number].str());
 
     Board board = board_from_fen_fragment(board_string).value();
     Color turn_to_move = turn_to_move_string[0] == 'w' ? Color::White : Color::Black;
     ColorMap<CastleRights> castle_rights = castle_rights_from_fen_fragment(castle_rights_string);
     std::optional<Location> en_passant_target = location_from_fen_fragment(en_passant_target_string);
 
-    return GameState(board, turn_to_move, castle_rights, en_passant_target);
+    size_t half_move_clock = std::stoul(half_move_clock_string);
+    size_t full_move_number = std::stoul(full_move_number_string);
+
+    return GameState(board, turn_to_move, castle_rights, en_passant_target, half_move_clock, full_move_number);
 }
 
 std::optional<Board> board_from_fen_fragment(std::string_view fragment)

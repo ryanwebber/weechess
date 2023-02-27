@@ -111,6 +111,12 @@ namespace {
             return m_request.board().color_occupancy()[other_color];
         }
 
+        BitBoard threats() const
+        {
+            auto other_color = invert_color(m_request.turn_to_move());
+            return m_request.board().color_attacks()[other_color];
+        }
+
         BitBoard en_passant_mask() const
         {
             BitBoard bb;
@@ -242,8 +248,8 @@ namespace {
         auto kings = helper.occupancy_to_move(Piece::Type::King);
         while (kings.any()) {
             auto origin = kings.pop_lsb().value();
-            auto jumps
-                = attack_maps::generate_king_attacks(origin) & (helper.attackable() | helper.board().non_occupancy());
+            auto jumps = attack_maps::generate_king_attacks(origin)
+                & (helper.attackable() | helper.board().non_occupancy()) & ~helper.threats();
             expand_moves(helper, moves, origin, jumps, Piece::Type::King);
         }
 

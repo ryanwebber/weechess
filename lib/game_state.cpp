@@ -15,11 +15,22 @@ MoveSet::MoveSet(std::vector<Move> legal_moves)
 }
 
 std::span<const Move> MoveSet::legal_moves() const { return m_legal_moves; };
-std::span<const Move> MoveSet::legal_moves_from(Location) const
+std::vector<Move> MoveSet::legal_moves_from(Location from) const
 {
-    (void)m_is_sorted;
-    assert(false);
-    return {};
+    LocationMoveQuery query(from);
+    return find(query);
+}
+
+std::vector<Move> MoveSet::find(const MoveQuery& query) const
+{
+    std::vector<Move> result;
+    for (const auto& move : m_legal_moves) {
+        if (query.test(move)) {
+            result.push_back(move);
+        }
+    }
+
+    return result;
 }
 
 bool MoveSet::is_legal_move(const Move& move) const
@@ -51,18 +62,27 @@ GameState::GameState()
 {
 }
 
-GameState::GameState(
-    Board board, Color turn_to_move, ColorMap<CastleRights> castle_rights, std::optional<Location> en_passant_target)
+GameState::GameState(Board board,
+    Color turn_to_move,
+    ColorMap<CastleRights> castle_rights,
+    std::optional<Location> en_passant_target,
+    size_t halfmove_clock,
+    size_t fullmove_number)
     : m_board(std::move(board))
     , m_turn_to_move(turn_to_move)
     , m_castle_rights(castle_rights)
     , m_en_passant_target(en_passant_target)
+    , m_halfmove_clock(halfmove_clock)
+    , m_fullmove_number(fullmove_number)
 {
 }
 
 const Color& GameState::turn_to_move() const { return m_turn_to_move; }
 const ColorMap<CastleRights>& GameState::castle_rights() const { return m_castle_rights; }
 const std::optional<Location>& GameState::en_passant_target() const { return m_en_passant_target; }
+
+size_t GameState::halfmove_clock() const { return m_halfmove_clock; }
+size_t GameState::fullmove_number() const { return m_fullmove_number; }
 
 bool GameState::is_check() const { return false; }
 bool GameState::is_checkmate() const { return move_set().legal_moves().empty() && is_check(); }
@@ -269,7 +289,17 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
 
     Board board(std::move(buffer));
 
-    return GameState(std::move(board), other_color, game_state.castle_rights(), {});
+    auto halfmove_clock = game_state.halfmove_clock() + 1;
+    if (move.is_capture() || move.moving_piece().type() == Piece::Type::Pawn) {
+        halfmove_clock = 0;
+    }
+
+    auto fullmove_number = game_state.fullmove_number();
+    if (game_state.turn_to_move() == Color::Black) {
+        fullmove_number++;
+    }
+
+    return GameState(std::move(board), other_color, game_state.castle_rights(), {}, halfmove_clock, fullmove_number);
 }
 
 static std::optional<GameState> by_performing_moves(const GameState& gs, std::span<const Move> moves)

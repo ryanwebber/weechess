@@ -76,6 +76,7 @@ set(LIB_SOURCES
         lib/game_state.cpp
         lib/location.cpp
         lib/move_generator.cpp
+        lib/move_query.cpp
         lib/move.cpp
         lib/piece.cpp
         )

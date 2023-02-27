@@ -9,6 +9,7 @@
 #include <weechess/board.h>
 #include <weechess/color_map.h>
 #include <weechess/move.h>
+#include <weechess/move_query.h>
 #include <weechess/piece.h>
 
 namespace weechess {
@@ -31,13 +32,14 @@ public:
     MoveSet(std::vector<Move> legal_moves);
 
     std::span<const Move> legal_moves() const;
-    std::span<const Move> legal_moves_from(Location) const;
+    std::vector<Move> legal_moves_from(Location) const;
     bool is_legal_move(const Move&) const;
+
+    std::vector<Move> find(const MoveQuery&) const;
 
     static MoveSet compute_from(const GameState&);
 
 private:
-    bool m_is_sorted { false };
     std::vector<Move> m_legal_moves;
 };
 
@@ -47,12 +49,17 @@ public:
     GameState(Board board,
         Color turn_to_move,
         ColorMap<CastleRights> castle_rights,
-        std::optional<Location> en_passant_target);
+        std::optional<Location> en_passant_target,
+        size_t halfmove_clock,
+        size_t fullmove_number);
 
     const Board& board() const;
     const Color& turn_to_move() const;
     const ColorMap<CastleRights>& castle_rights() const;
     const std::optional<Location>& en_passant_target() const;
+
+    size_t halfmove_clock() const;
+    size_t fullmove_number() const;
 
     bool is_check() const;
     bool is_checkmate() const;
@@ -78,6 +85,9 @@ private:
 
     ColorMap<CastleRights> m_castle_rights;
     std::optional<Location> m_en_passant_target;
+
+    size_t m_halfmove_clock;
+    size_t m_fullmove_number;
 };
 
 }
