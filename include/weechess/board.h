@@ -13,6 +13,53 @@
 
 namespace weechess {
 
+namespace {
+    constexpr std::array<BitBoard, 8> rank_masks = {
+        BitBoard(0xffull),
+        BitBoard(0xff00ull),
+        BitBoard(0xff0000ull),
+        BitBoard(0xff000000ull),
+        BitBoard(0xff00000000ull),
+        BitBoard(0xff0000000000ull),
+        BitBoard(0xff000000000000ull),
+        BitBoard(0xff00000000000000ull),
+    };
+
+    constexpr std::array<BitBoard, 8> file_masks = {
+        BitBoard(0x8080808080808080ull),
+        BitBoard(0x4040404040404040ull),
+        BitBoard(0x2020202020202020ull),
+        BitBoard(0x1010101010101010ull),
+        BitBoard(0x0808080808080808ull),
+        BitBoard(0x0404040404040404ull),
+        BitBoard(0x0202020202020202ull),
+        BitBoard(0x0101010101010101ull),
+    };
+
+}
+
+struct Rank {
+    uint8_t index;
+
+    constexpr Rank(uint8_t named_rank)
+        : index(named_rank - 1)
+    {
+    }
+
+    constexpr BitBoard mask() const { return rank_masks[index]; }
+};
+
+struct File {
+    uint8_t index;
+
+    constexpr File(char named_file)
+        : index(7 - (std::tolower(named_file) - 'a'))
+    {
+    }
+
+    constexpr BitBoard mask() const { return file_masks[index]; }
+};
+
 class Board {
 public:
     static constexpr size_t cell_count = 64;

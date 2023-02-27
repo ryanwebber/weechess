@@ -69,6 +69,7 @@ set(LIB_LOGGING_ENABLED ON)
 
 set(LIB_TARGET weechess)
 set(LIB_SOURCES
+        lib/attack_maps.cpp
         lib/bit_board.cpp
         lib/board.cpp
         lib/fen.cpp
@@ -149,6 +150,7 @@ include(CTest)
 set(TEST_TARGET weechess-tests)
 set(TEST_SOURCES
         tests/main.cpp
+        tests/test_board.cpp
         tests/test_bit_board.cpp
         tests/test_fen.cpp
         tests/test_game_state.cpp

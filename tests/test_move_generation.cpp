@@ -3,7 +3,7 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include <weechess/comptime.h>
+#include <weechess/attack_maps.h>
 #include <weechess/game_state.h>
 #include <weechess/move_generator.h>
 
@@ -47,34 +47,7 @@ TEST_CASE("Rook move generation", "[movegen]")
 {
     using namespace weechess;
 
-    SECTION("Slide masks", "[comptime]")
-    {
-        auto table = comptime::compute_rook_slide_masks();
-
-        std::array<Location, 10> expectated = {
-            // Left
-            Location::C3,
-            Location::B3,
-
-            // Right
-            Location::E3,
-            Location::F3,
-            Location::G3,
-
-            // Up
-            Location::D4,
-            Location::D5,
-            Location::D6,
-            Location::D7,
-
-            // Down
-            Location::D2,
-        };
-
-        CHECK(table[Location::D3.offset] == BitBoard::from(expectated));
-    }
-
-    SECTION("Slides with blockers", "[comptime]")
+    SECTION("Attacks with blockers", "[comptime]")
     {
         auto location = Location::C3;
         std::array<Location, 4> other_pieces = {
@@ -100,7 +73,7 @@ TEST_CASE("Rook move generation", "[movegen]")
         */
 
         auto blockers = BitBoard::from(other_pieces);
-        auto actual_moves = comptime::compute_rook_attacks_unoptimized(location, blockers);
+        auto attacks = attack_maps::generate_rook_attacks(location, blockers);
 
         std::array<Location, 10> expectated = {
             // Up
@@ -122,32 +95,7 @@ TEST_CASE("Rook move generation", "[movegen]")
             Location::A3,
         };
 
-        CHECK(actual_moves == BitBoard::from(expectated));
-    }
-
-    SECTION("Optimized movement sanity check", "[comptime]")
-    {
-        auto noise = 0xa2f8df60487ed0b0ULL;
-
-        for (auto i = 0; i < 64; i++) {
-            Location l(i);
-
-            BitBoard occupancy;
-            for (auto x = 0; x < 10; x++) {
-                // Try to create slightly different board
-                // layouts for each case, setting 10-ish bits
-                occupancy.set(((noise ^ i) >> x) % 64);
-            }
-
-            occupancy.unset(l);
-
-            INFO("BitBoard at " << l.to_string() << " with occupancy (" << occupancy.data() << "ULL)\n" << occupancy);
-
-            auto slow_results = comptime::compute_rook_attacks_unoptimized(l, occupancy);
-            auto fast_results = testapi::rook_attacks(l, occupancy);
-
-            CHECK(slow_results == fast_results);
-        }
+        CHECK(attacks == BitBoard::from(expectated));
     }
 
     SECTION("Attacking moves")
@@ -161,32 +109,6 @@ TEST_CASE("Rook move generation", "[movegen]")
 TEST_CASE("Bishop move generation", "[movegen]")
 {
     using namespace weechess;
-
-    SECTION("Slide masks")
-    {
-        auto table = comptime::compute_bishop_slide_masks();
-
-        std::array<Location, 9> expectated = {
-            // Up-Left
-            Location::C5,
-            Location::B6,
-
-            // Up-Right
-            Location::E5,
-            Location::F6,
-            Location::G7,
-
-            // Down-Left
-            Location::C3,
-            Location::B2,
-
-            // Down-Right
-            Location::E3,
-            Location::F2,
-        };
-
-        CHECK(table[Location::D4.offset] == BitBoard::from(expectated));
-    }
 
     SECTION("Slides with blockers", "[comptime]")
     {
@@ -213,7 +135,7 @@ TEST_CASE("Bishop move generation", "[movegen]")
         */
 
         auto blockers = BitBoard::from(other_pieces);
-        auto actual_moves = comptime::compute_bishop_attacks_unoptimized(location, blockers);
+        auto attacks = attack_maps::generate_bishop_attacks(location, blockers);
 
         std::array<Location, 8> expectated = {
             // Top Right
@@ -233,32 +155,7 @@ TEST_CASE("Bishop move generation", "[movegen]")
             Location::B4,
         };
 
-        CHECK(actual_moves == BitBoard::from(expectated));
-    }
-
-    SECTION("Optimized movement sanity check", "[comptime]")
-    {
-        auto noise = 0xa2f8df60487ed0b0ULL;
-
-        for (auto i = 0; i < 64; i++) {
-            Location l(i);
-
-            BitBoard occupancy;
-            for (auto x = 0; x < 10; x++) {
-                // Try to create slightly different board
-                // layouts for each case, setting 10-ish bits
-                occupancy.set(((noise ^ i) >> x) % 64);
-            }
-
-            occupancy.unset(l);
-
-            INFO("BitBoard at " << l.to_string() << " with occupancy (" << occupancy.data() << "ULL)\n" << occupancy);
-
-            auto slow_results = comptime::compute_bishop_attacks_unoptimized(l, occupancy);
-            auto fast_results = testapi::bishop_attacks(l, occupancy);
-
-            CHECK(slow_results == fast_results);
-        }
+        CHECK(attacks == BitBoard::from(expectated));
     }
 
     SECTION("Attacking moves")
@@ -287,15 +184,23 @@ TEST_CASE("Pawn move generation", "[movegen]")
 
     SECTION("Attacking squares", "[comptime]")
     {
-        auto table = comptime::compute_pawn_attacks();
+        {
+            auto attacks = attack_maps::generate_pawn_attacks(Location::B2, Color::White);
+            std::array<Location, 2> expected = { Location::A3, Location::C3 };
+            CHECK(attacks == BitBoard::from(expected));
+        }
 
-        std::array<Location, 2> exp_1 = { Location::A3, Location::C3 };
-        CHECK(table[Color::White][Location::B2.offset] == BitBoard::from(exp_1));
+        {
+            auto attacks = attack_maps::generate_pawn_attacks(Location::D3, Color::Black);
+            std::array<Location, 2> expected = { Location::C2, Location::E2 };
+            CHECK(attacks == BitBoard::from(expected));
+        }
 
-        std::array<Location, 2> exp_2 = { Location::C2, Location::E2 };
-        CHECK(table[Color::Black][Location::D3.offset] == BitBoard::from(exp_2));
-
-        CHECK(table[Color::Black][Location::C4.offset] != table[Color::White][Location::C4.offset]);
+        {
+            auto black_attacks = attack_maps::generate_pawn_attacks(Location::C4, Color::Black);
+            auto white_attacks = attack_maps::generate_pawn_attacks(Location::C4, Color::White);
+            CHECK(black_attacks != white_attacks);
+        }
     }
 
     SECTION("Capturing moves")
@@ -351,7 +256,7 @@ TEST_CASE("Knight move generation", "[movegen]")
 
     SECTION("Attacking squares", "[comptime]")
     {
-        auto table = comptime::compute_knight_attacks();
+        auto attacks = attack_maps::generate_knight_attacks(Location::B1);
 
         std::array<Location, 3> expected = {
             Location::A3,
@@ -359,7 +264,7 @@ TEST_CASE("Knight move generation", "[movegen]")
             Location::D2,
         };
 
-        CHECK(table[Location::B1.offset] == BitBoard::from(expected));
+        CHECK(attacks == BitBoard::from(expected));
     }
 
     SECTION("Attacking moves")
@@ -376,7 +281,7 @@ TEST_CASE("King move generation", "[movegen]")
 
     SECTION("Attacking squares", "[comptime]")
     {
-        auto table = comptime::compute_king_attacks();
+        auto attacks = attack_maps::generate_king_attacks(Location::D8);
 
         std::array<Location, 5> expected = {
             Location::D7,
@@ -386,7 +291,7 @@ TEST_CASE("King move generation", "[movegen]")
             Location::C7,
         };
 
-        CHECK(table[Location::D8.offset] == BitBoard::from(expected));
+        CHECK(attacks == BitBoard::from(expected));
     }
 
     SECTION("Attacking moves")

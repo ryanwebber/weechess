@@ -1,7 +1,7 @@
 #include <array>
 
+#include <weechess/attack_maps.h>
 #include <weechess/bit_board.h>
-#include <weechess/comptime.h>
 #include <weechess/move_generator.h>
 
 #include "log.h"
@@ -16,15 +16,6 @@ namespace {
         Piece::Type::Bishop,
         Piece::Type::Knight,
     };
-
-    const std::array<BitBoard, 64> k_knight_attacks = comptime::compute_knight_attacks();
-    const std::array<BitBoard, 64> k_king_attacks = comptime::compute_king_attacks();
-
-    const comptime::RookMagicTable k_rook_magic_table = comptime::compute_rook_magic_table();
-    const comptime::BishopMagicTable k_bishop_magic_table = comptime::compute_bishop_magic_table();
-
-    const std::array<BitBoard, 64> k_rook_masks = comptime::compute_rook_slide_masks();
-    const std::array<BitBoard, 64> k_bishop_masks = comptime::compute_bishop_slide_masks();
 
     class Helper {
     private:
@@ -72,33 +63,33 @@ namespace {
         BitBoard file_shifted(BitBoard bb, int8_t sign) const
         {
             if ((m_request.turn_to_move() == Color::White) == (sign > 0))
-                return (bb & ~comptime::file_mask[comptime::H_File]) << 1;
+                return (bb & ~File('H').mask()) << 1;
             else
-                return (bb & ~comptime::file_mask[comptime::A_File]) >> 1;
+                return (bb & ~File('A').mask()) >> 1;
         }
 
         BitBoard backrank_mask() const
         {
             if (m_request.turn_to_move() == Color::White)
-                return comptime::rank_mask[comptime::_8th_Rank];
+                return Rank(8).mask();
             else
-                return comptime::rank_mask[comptime::_1st_Rank];
+                return Rank(1).mask();
         }
 
         BitBoard home_rank_mask(int rank) const
         {
             if (m_request.turn_to_move() == Color::White)
-                return comptime::rank_mask[comptime::_1st_Rank] << (8 * (rank - 1));
+                return Rank(1).mask() << (8 * (rank - 1));
             else
-                return comptime::rank_mask[comptime::_8th_Rank] >> (8 * (rank - 1));
+                return Rank(8).mask() << (8 * (rank - 1));
         }
 
         BitBoard edge_file_mask(int sign) const
         {
             if ((m_request.turn_to_move() == Color::White) == (sign > 0))
-                return comptime::file_mask[comptime::H_File];
+                return File('H').mask();
             else
-                return comptime::file_mask[comptime::A_File];
+                return File('A').mask();
         }
 
         BitBoard shift_forward(BitBoard bb) const
@@ -130,24 +121,6 @@ namespace {
             return bb;
         }
     };
-
-    BitBoard generate_rook_attacks(Location location, BitBoard blockers)
-    {
-        blockers &= k_rook_masks[location.offset];
-        auto blockers_ull = blockers.data();
-        auto magic_ull = comptime::rook_magics[location.offset].data();
-        auto key = (blockers_ull * magic_ull) >> (64 - comptime::rook_magic_indexes[location.offset]);
-        return k_rook_magic_table[location.offset][key];
-    }
-
-    BitBoard generate_bishop_attacks(Location location, BitBoard blockers)
-    {
-        blockers &= k_bishop_masks[location.offset];
-        auto blockers_ull = blockers.data();
-        auto magic_ull = comptime::bishop_magics[location.offset].data();
-        auto key = (blockers_ull * magic_ull) >> (64 - comptime::bishop_magic_indexes[location.offset]);
-        return k_bishop_magic_table[location.offset][key];
-    }
 
     void expand_moves(
         const Helper& helper, std::vector<Move>& moves, Location origin, BitBoard targets, Piece::Type type)
@@ -258,7 +231,8 @@ namespace {
         auto knights = helper.occupancy_to_move(Piece::Type::Knight);
         while (knights.any()) {
             auto origin = knights.pop_lsb().value();
-            auto jumps = k_knight_attacks[origin.offset] & (helper.attackable() | helper.board().non_occupancy());
+            auto jumps
+                = attack_maps::generate_knight_attacks(origin) & (helper.attackable() | helper.board().non_occupancy());
             expand_moves(helper, moves, origin, jumps, Piece::Type::Knight);
         }
     }
@@ -268,7 +242,8 @@ namespace {
         auto kings = helper.occupancy_to_move(Piece::Type::King);
         while (kings.any()) {
             auto origin = kings.pop_lsb().value();
-            auto jumps = k_king_attacks[origin.offset] & (helper.attackable() | helper.board().non_occupancy());
+            auto jumps
+                = attack_maps::generate_king_attacks(origin) & (helper.attackable() | helper.board().non_occupancy());
             expand_moves(helper, moves, origin, jumps, Piece::Type::King);
         }
 
@@ -291,7 +266,7 @@ namespace {
         auto own_pieces = helper.board().color_occupancy()[helper.color_to_move()];
         while (bishops.any()) {
             auto origin = bishops.pop_lsb().value();
-            auto attacks = generate_bishop_attacks(origin, occupancy);
+            auto attacks = attack_maps::generate_bishop_attacks(origin, occupancy);
             auto slides = attacks & ~own_pieces;
             expand_moves(helper, moves, origin, slides, Piece::Type::Bishop);
         }
@@ -304,7 +279,7 @@ namespace {
         auto own_pieces = helper.board().color_occupancy()[helper.color_to_move()];
         while (rooks.any()) {
             auto origin = rooks.pop_lsb().value();
-            auto attacks = generate_rook_attacks(origin, occupancy);
+            auto attacks = attack_maps::generate_rook_attacks(origin, occupancy);
             auto slides = attacks & ~own_pieces;
             expand_moves(helper, moves, origin, slides, Piece::Type::Rook);
         }
@@ -317,7 +292,7 @@ namespace {
         auto own_pieces = helper.board().color_occupancy()[helper.color_to_move()];
         while (queens.any()) {
             auto origin = queens.pop_lsb().value();
-            auto attacks = generate_bishop_attacks(origin, occupancy) | generate_rook_attacks(origin, occupancy);
+            auto attacks = attack_maps::generate_queen_attacks(origin, occupancy);
             auto slides = attacks & ~own_pieces;
             expand_moves(helper, moves, origin, slides, Piece::Type::Queen);
         }
@@ -352,16 +327,6 @@ MoveGenerator::Result MoveGenerator::execute(const Request& request) const
     Result result;
     generate_legal_moves(request, result.legal_moves);
     return result;
-}
-
-namespace testapi {
-
-    BitBoard rook_attacks(Location location, BitBoard blockers) { return generate_rook_attacks(location, blockers); }
-
-    BitBoard bishop_attacks(Location location, BitBoard blockers)
-    {
-        return generate_bishop_attacks(location, blockers);
-    }
 }
 
 } // namespace weechess

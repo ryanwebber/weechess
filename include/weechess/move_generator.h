@@ -10,11 +10,6 @@
 
 namespace weechess {
 
-namespace testapi {
-    BitBoard rook_attacks(Location, BitBoard blockers);
-    BitBoard bishop_attacks(Location, BitBoard blockers);
-}
-
 class MoveGenerator {
 public:
     class Request {
