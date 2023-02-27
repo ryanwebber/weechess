@@ -12,6 +12,8 @@ enum class Color : uint8_t {
     Black = 1 << 4,
 };
 
+constexpr std::array<Color, 2> all_colors = { Color::White, Color::Black };
+
 struct Piece {
 
     constexpr static uint8_t type_mask = 0b00111;

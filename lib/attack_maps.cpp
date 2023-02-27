@@ -511,5 +511,25 @@ namespace attack_maps {
     {
         return generate_rook_attacks(location, blockers) | generate_bishop_attacks(location, blockers);
     }
+
+    BitBoard generate_attacks(Piece piece, Location location, BitBoard blockers)
+    {
+        switch (piece.type()) {
+        case Piece::Type::Knight:
+            return generate_knight_attacks(location);
+        case Piece::Type::King:
+            return generate_king_attacks(location);
+        case Piece::Type::Pawn:
+            return generate_pawn_attacks(location, piece.color());
+        case Piece::Type::Rook:
+            return generate_rook_attacks(location, blockers);
+        case Piece::Type::Bishop:
+            return generate_bishop_attacks(location, blockers);
+        case Piece::Type::Queen:
+            return generate_queen_attacks(location, blockers);
+        default:
+            return BitBoard::empty();
+        }
+    }
 }
 }

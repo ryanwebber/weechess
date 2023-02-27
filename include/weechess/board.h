@@ -86,6 +86,7 @@ public:
     const BitBoard& occupancy_for(Piece piece) const;
     const BitBoard& shared_occupancy() const;
     const ColorMap<BitBoard>& color_occupancy() const;
+    const ColorMap<BitBoard>& color_attacks() const;
     BitBoard non_occupancy() const;
 
     std::array<Piece, 64> to_array() const;
@@ -107,6 +108,7 @@ private:
     Buffer m_piece_buffer {};
     BitBoard m_shared_occupancy {};
     ColorMap<BitBoard> m_color_occupancy {};
+    ColorMap<BitBoard> m_color_attacks {};
 };
 
 }

@@ -14,4 +14,6 @@ BitBoard generate_knight_attacks(Location location);
 BitBoard generate_king_attacks(Location location);
 BitBoard generate_pawn_attacks(Location location, Color color);
 
+BitBoard generate_attacks(Piece piece, Location location, BitBoard blockers);
+
 }
