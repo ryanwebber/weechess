@@ -66,6 +66,20 @@ TEST_CASE("Applying moves to game states", "[rules]")
         test_case.run();
     }
 
+    SECTION("Pawn double pushes")
+    {
+        TestCase test_case = {
+            .begin_fen = "8/1p6/8/8/8/8/1P6/8 w - - 1 8",
+            .moves = {
+                std::make_shared<LocationMoveQuery>(Location::B2, Location::B4),
+                std::make_shared<LocationMoveQuery>(Location::B7, Location::B5),
+            },
+            .end_fen = "8/8/8/1p6/1P6/8/8/8 w - - 1 8",
+        };
+
+        test_case.run();
+    }
+
     SECTION("Castling moves")
     {
         TestCase test_case = {

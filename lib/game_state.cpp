@@ -254,9 +254,6 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
         return {};
     }
 
-    // TODO: This does not account for:
-    //  * En passant
-
     auto moving_piece = move.moving_piece();
     auto resulting_piece = move.resulting_piece();
 

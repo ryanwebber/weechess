@@ -46,6 +46,8 @@ struct Rank {
     {
     }
 
+    constexpr Rank inverted() const { return Rank(8 - index); }
+
     constexpr BitBoard mask() const { return rank_masks[index]; }
 };
 

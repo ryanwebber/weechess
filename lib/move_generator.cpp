@@ -83,12 +83,12 @@ namespace {
                 return Rank(1).mask();
         }
 
-        BitBoard home_rank_mask(int rank) const
+        BitBoard home_rank_mask(Rank rank) const
         {
             if (m_request.turn_to_move() == Color::White)
-                return Rank(1).mask() << (8 * (rank - 1));
+                return rank.mask();
             else
-                return Rank(8).mask() << (8 * (rank - 1));
+                return rank.inverted().mask();
         }
 
         BitBoard edge_file_mask(int sign) const
@@ -185,7 +185,7 @@ namespace {
 
         // Two steps froward
         {
-            BitBoard pawns = helper.occupancy_to_move(Piece::Type::Pawn) & helper.home_rank_mask(2);
+            BitBoard pawns = helper.occupancy_to_move(Piece::Type::Pawn) & helper.home_rank_mask(Rank(2));
             BitBoard non_occupancy = helper.board().non_occupancy();
             BitBoard single_moves = helper.shift_forward(pawns) & non_occupancy;
             BitBoard double_moves = helper.shift_forward(single_moves) & non_occupancy;
