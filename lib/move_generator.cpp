@@ -10,6 +10,13 @@ namespace weechess {
 
 namespace {
 
+    namespace castling {
+        constexpr ColorMap<BitBoard> kingside_check_mask(BitBoard(0x70ULL), BitBoard(0x7000000000000000ULL));
+        constexpr ColorMap<BitBoard> queenside_check_mask(BitBoard(0x1cULL), BitBoard(0x1c00000000000000ULL));
+        constexpr ColorMap<BitBoard> kingside_path_mask(BitBoard(0x60ULL), BitBoard(0x6000000000000000ULL));
+        constexpr ColorMap<BitBoard> queenside_path_mask(BitBoard(0xeULL), BitBoard(0xe00000000000000ULL));
+    }
+
     constexpr std::array<Piece::Type, 4> promotion_types = {
         Piece::Type::Queen,
         Piece::Type::Rook,
@@ -245,6 +252,7 @@ namespace {
 
     void generate_king_moves(const Helper& helper, std::vector<Move>& moves)
     {
+        auto color = helper.color_to_move();
         auto kings = helper.occupancy_to_move(Piece::Type::King);
         while (kings.any()) {
             auto origin = kings.pop_lsb().value();
@@ -253,15 +261,20 @@ namespace {
             expand_moves(helper, moves, origin, jumps, Piece::Type::King);
         }
 
-        // TODO: Check checks and piece validity
-        return;
-
         if (helper.castle_rights_to_move().can_castle_kingside) {
-            moves.push_back(Move::by_castling(helper.piece_to_move(Piece::Type::King), CastleSide::Kingside));
+            auto path_blocks = helper.board().shared_occupancy() & castling::kingside_path_mask[color];
+            auto path_checks = helper.threats() & castling::kingside_check_mask[color];
+            if (path_blocks.none() && path_checks.none()) {
+                moves.push_back(Move::by_castling(helper.piece_to_move(Piece::Type::King), CastleSide::Kingside));
+            }
         }
 
         if (helper.castle_rights_to_move().can_castle_queenside) {
-            moves.push_back(Move::by_castling(helper.piece_to_move(Piece::Type::King), CastleSide::Queenside));
+            auto path_blocks = helper.board().shared_occupancy() & castling::queenside_path_mask[color];
+            auto path_checks = helper.threats() & castling::queenside_check_mask[color];
+            if (path_blocks.none() && path_checks.none()) {
+                moves.push_back(Move::by_castling(helper.piece_to_move(Piece::Type::King), CastleSide::Queenside));
+            }
         }
     }
 

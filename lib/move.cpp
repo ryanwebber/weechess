@@ -113,6 +113,34 @@ Move Move::by_en_passant(Piece piece, Location from, Location to)
     return move;
 }
 
+Move Move::by_castling(Piece piece, CastleSide side)
+{
+    Move move;
+    move.set_piece_type(piece.type());
+    move.set_color(piece.color());
+    if (side == CastleSide::Kingside) {
+        move.set_flags(Flags::KingsideCastle, 1);
+        if (piece.color() == Color::White) {
+            move.set_origin(Location::E1);
+            move.set_destination(Location::G1);
+        } else {
+            move.set_origin(Location::E8);
+            move.set_destination(Location::G8);
+        }
+    } else {
+        move.set_flags(Flags::QueensideCastle, 1);
+        if (piece.color() == Color::White) {
+            move.set_origin(Location::E1);
+            move.set_destination(Location::C1);
+        } else {
+            move.set_origin(Location::E8);
+            move.set_destination(Location::C8);
+        }
+    }
+
+    return move;
+}
+
 std::string Move::san_notation(const GameState& gs) const { return gs.san_notation(*this); }
 
 bool operator==(const Move& lhs, const Move& rhs) { return lhs.m_data == rhs.m_data; }

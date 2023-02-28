@@ -40,12 +40,12 @@ TEST_CASE("Move short algebraic notation")
     auto left_capture = std::find_if(
         moves.begin(), moves.end(), [](const auto& move) { return move.start_location() == Location::D5; });
 
-    // auto right_capture = std::find_if(
-    //     moves.begin(), moves.end(), [](const auto& move) { return move.start_location() == Location::B5; });
+    auto right_capture = std::find_if(
+        moves.begin(), moves.end(), [](const auto& move) { return move.start_location() == Location::B5; });
 
     REQUIRE(left_capture != moves.end());
-    // REQUIRE(right_capture != moves.end());
+    REQUIRE(right_capture != moves.end());
 
     CHECK(left_capture->san_notation(game_state) == "dxc6");
-    // CHECK(right_capture->san_notation(game_state) == "bxc6");
+    CHECK(right_capture->san_notation(game_state) == "bxc6");
 }

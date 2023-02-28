@@ -39,6 +39,11 @@ TEST_CASE("Perft move generation counts", "[movegen]")
     {
         // https://www.chessprogramming.org/Perft_Results#Position_5
         auto gs = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
+
+        CHECK(do_perft(gs, 1, true) == 44);
+        CHECK(do_perft(gs, 2, true) == 1486);
+        CHECK(do_perft(gs, 3, true) == 62379);
+        CHECK(do_perft(gs, 4, true) == 2103487);
         CHECK(do_perft(gs, 5, true) == 89941194);
     }
 }

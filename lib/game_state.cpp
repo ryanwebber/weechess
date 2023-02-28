@@ -255,10 +255,7 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
     }
 
     // TODO: This does not account for:
-    //  * Castle rights
-    //  * Castling
     //  * En passant
-    //  * Promotion
 
     auto moving_piece = move.moving_piece();
     auto resulting_piece = move.resulting_piece();
@@ -287,7 +284,21 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
         buffer.occupancy_for(resulting_piece).set(move.end_location());
     }
 
-    Board board(std::move(buffer));
+    if (move.is_castle()) {
+        if (move.castle_side() == CastleSide::Kingside) {
+            auto rook_start = Location::from_rank_and_file(move.start_location().rank(), 7);
+            auto rook_end = Location::from_rank_and_file(move.start_location().rank(), 5);
+            auto rook = Piece(Piece::Type::Rook, game_state.turn_to_move());
+            buffer.occupancy_for(rook).unset(rook_start);
+            buffer.occupancy_for(rook).set(rook_end);
+        } else {
+            auto rook_start = Location::from_rank_and_file(move.start_location().rank(), 0);
+            auto rook_end = Location::from_rank_and_file(move.start_location().rank(), 3);
+            auto rook = Piece(Piece::Type::Rook, game_state.turn_to_move());
+            buffer.occupancy_for(rook).unset(rook_start);
+            buffer.occupancy_for(rook).set(rook_end);
+        }
+    }
 
     auto halfmove_clock = game_state.halfmove_clock() + 1;
     if (move.is_capture() || move.moving_piece().type() == Piece::Type::Pawn) {
@@ -299,7 +310,28 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
         fullmove_number++;
     }
 
-    return GameState(std::move(board), other_color, game_state.castle_rights(), {}, halfmove_clock, fullmove_number);
+    auto castle_rights = game_state.castle_rights();
+    if (move.moving_piece().type() == Piece::Type::King) {
+        castle_rights[game_state.turn_to_move()].can_castle_kingside = false;
+        castle_rights[game_state.turn_to_move()].can_castle_queenside = false;
+    } else if (move.moving_piece() == Piece(Piece::Type::Rook, Color::White) && move.start_location() == Location::A1) {
+        castle_rights[Color::White].can_castle_queenside = false;
+    } else if (move.moving_piece() == Piece(Piece::Type::Rook, Color::White) && move.start_location() == Location::H1) {
+        castle_rights[Color::White].can_castle_kingside = false;
+    } else if (move.moving_piece() == Piece(Piece::Type::Rook, Color::Black) && move.start_location() == Location::A8) {
+        castle_rights[Color::Black].can_castle_queenside = false;
+    } else if (move.moving_piece() == Piece(Piece::Type::Rook, Color::Black) && move.start_location() == Location::H8) {
+        castle_rights[Color::Black].can_castle_kingside = false;
+    }
+
+    auto en_passant_target = std::optional<Location>();
+    if (move.is_double_pawn()) {
+        auto rank_offset = game_state.turn_to_move() == Color::White ? 1 : -1;
+        en_passant_target = move.start_location().offset_by(Location::RankShift { rank_offset });
+    }
+
+    return GameState(
+        Board(std::move(buffer)), other_color, castle_rights, en_passant_target, halfmove_clock, fullmove_number);
 }
 
 static std::optional<GameState> by_performing_moves(const GameState& gs, std::span<const Move> moves)

@@ -48,7 +48,6 @@ public:
     void set_destination(Location location);
     void set_capture(Piece::Type type);
     void set_promotion(Piece::Type type);
-    void set_castle_side(CastleSide);
     void set_double_pawn_push();
 
     Piece::Type captured_piece_type() const;
