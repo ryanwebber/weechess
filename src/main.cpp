@@ -100,6 +100,28 @@ public:
     ~AppDelegate() = default;
 };
 
+uint64_t do_perft(weechess::GameState gs, int depth, bool print = false)
+{
+    if (depth == 0) {
+        return 1;
+    } else if (depth == 1) {
+        return gs.move_set().legal_moves().size();
+    }
+
+    uint64_t count = 0;
+    for (const auto& move : gs.move_set().legal_moves()) {
+        auto new_gs = weechess::GameState::by_performing_move(gs, move).value();
+        auto result = do_perft(std::move(new_gs), depth - 1);
+        count += result;
+
+        // if (print) {
+        //     UNSCOPED_INFO(gs.san_notation(move) << ": " << result << "\n");
+        // }
+    }
+
+    return count;
+}
+
 int main(int argc, char* argv[])
 {
     // TODO: parse agruments
@@ -107,19 +129,21 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    log::init_logging();
-
-    auto screen = ftxui::ScreenInteractive::Fullscreen();
-
-    AppController controller;
-    auto delegate = AppDelegate::make_shared(controller, screen.ExitLoopClosure());
-    controller.set_delegate(delegate);
-
     auto gamestate = weechess::GameState::new_game();
-    controller.update_state([&](auto& state) {
-        state.game_state = gamestate;
-        return true;
-    });
+    do_perft(gamestate, 6, true);
 
-    screen.Loop(controller.renderer());
+    // log::init_logging();
+
+    // auto screen = ftxui::ScreenInteractive::Fullscreen();
+
+    // AppController controller;
+    // auto delegate = AppDelegate::make_shared(controller, screen.ExitLoopClosure());
+    // controller.set_delegate(delegate);
+
+    // controller.update_state([&](auto& state) {
+    //     state.game_state = gamestate;
+    //     return true;
+    // });
+
+    // screen.Loop(controller.renderer());
 }

@@ -70,9 +70,8 @@ public:
         std::array<BitBoard, 14> m_occupancy;
 
         Buffer() = default;
-        Buffer(std::array<BitBoard, 12>);
 
-        const std::array<BitBoard, 12> data() const;
+        const std::array<BitBoard, 14>& data() const { return m_occupancy; }
 
         BitBoard& occupancy_for(Piece piece);
         const BitBoard& occupancy_for(Piece piece) const;

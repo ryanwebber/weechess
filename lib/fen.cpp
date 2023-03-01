@@ -78,6 +78,10 @@ std::string to_fen(const GameState& game_state)
         }
     }
 
+    if (space_count > 0) {
+        fen_str += std::to_string(space_count);
+    }
+
     fen_str += " ";
     fen_str += turn_to_move == Color::White ? 'w' : 'b';
 

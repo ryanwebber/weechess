@@ -1,9 +1,9 @@
+#include <functional>
+
 #include <weechess/game_state.h>
 #include <weechess/move.h>
 
 namespace weechess {
-
-Move::Move() { }
 
 Move::Move(Data data)
     : m_data(data)
@@ -13,17 +13,17 @@ Move::Move(Data data)
 Piece Move::moving_piece() const
 {
     auto piece_type = static_cast<Piece::Type>(get_flags(Flags::PieceType));
-    return Piece(piece_type, get_color());
+    return Piece(piece_type, color());
 }
 
 Piece Move::resulting_piece() const
 {
     if (is_promotion()) {
         auto piece_type = promoted_piece_type();
-        return Piece(piece_type, get_color());
+        return Piece(piece_type, color());
     } else {
         auto piece_type = static_cast<Piece::Type>(get_flags(Flags::PieceType));
-        return Piece(piece_type, get_color());
+        return Piece(piece_type, color());
     }
 }
 
@@ -32,7 +32,7 @@ uint32_t Move::get_flags(Flags flags) const
     return (m_data.to_ulong() & masks[static_cast<uint32_t>(flags)]) >> shifts[static_cast<uint32_t>(flags)];
 }
 
-Color Move::get_color() const { return get_flags(Flags::Color) == 1 ? Color::White : Color::Black; }
+Color Move::color() const { return get_flags(Flags::Color) == 1 ? Color::White : Color::Black; }
 
 void Move::set_flags(Flags flags, uint32_t value)
 {
@@ -143,6 +143,10 @@ Move Move::by_castling(Piece piece, CastleSide side)
 
 std::string Move::san_notation(const GameState& gs) const { return gs.san_notation(*this); }
 
+std::size_t MoveHash::operator()(const Move& move) const { return std::hash<Move::Data> {}(move.m_data); }
+
 bool operator==(const Move& lhs, const Move& rhs) { return lhs.m_data == rhs.m_data; }
+bool operator!=(const Move& lhs, const Move& rhs) { return !(lhs == rhs); }
+bool operator<(const Move& lhs, const Move& rhs) { return lhs.m_data.to_ulong() < rhs.m_data.to_ulong(); }
 
 } // namespace weechess

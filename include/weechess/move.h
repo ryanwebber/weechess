@@ -16,12 +16,13 @@ enum class CastleSide {
 };
 
 class GameState;
+struct MoveHash;
 
 class Move {
 public:
     using Data = std::bitset<32>;
 
-    Move(const Move&) = default;
+    Move() = default;
     Move(Data data);
 
     Piece moving_piece() const;
@@ -42,6 +43,8 @@ public:
     bool is_en_passant() const;
     bool is_double_pawn() const;
 
+    Color color() const;
+
     void set_color(Color color);
     void set_piece_type(Piece::Type type);
     void set_origin(Location location);
@@ -57,6 +60,10 @@ public:
     std::string san_notation(const GameState&) const;
 
     friend bool operator==(const Move&, const Move&);
+    friend bool operator!=(const Move&, const Move&);
+    friend bool operator<(const Move&, const Move&);
+
+    friend struct MoveHash;
 
 private:
     enum class Flags : uint32_t {
@@ -98,16 +105,19 @@ private:
         28,
     };
 
-    Move();
-
     uint32_t get_flags(Flags flags) const;
-    Color get_color() const;
 
     void set_flags(Flags flags, uint32_t value);
 
     Data m_data;
 };
 
+struct MoveHash {
+    std::size_t operator()(const Move& move) const;
+};
+
 bool operator==(const Move& lhs, const Move& rhs);
+bool operator!=(const Move& lhs, const Move& rhs);
+bool operator<(const Move& lhs, const Move& rhs);
 
 }

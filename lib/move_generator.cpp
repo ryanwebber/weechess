@@ -317,7 +317,7 @@ namespace {
         }
     }
 
-    void generate_legal_moves(const MoveGenerator::Request& request, std::vector<Move>& moves)
+    void generate_psuedo_legal_moves(const MoveGenerator::Request& request, std::vector<Move>& moves)
     {
         Helper helper(request);
         generate_pawn_moves(helper, moves);
@@ -344,7 +344,21 @@ void MoveGenerator::Request::set_en_passant_target(const Location& location) { m
 MoveGenerator::Result MoveGenerator::execute(const Request& request) const
 {
     Result result;
-    generate_legal_moves(request, result.legal_moves);
+
+    // Reserve a reasonable amount of space for the legal moves
+    // to avoid reallocations.
+    result.legal_moves.reserve(128);
+
+    generate_psuedo_legal_moves(request, result.legal_moves);
+
+    std::erase_if(result.legal_moves, [&](const Move& move) {
+        auto board = GameState::augmented_board_for_move(request.board(), move, request.en_passant_target());
+        auto king_position = board->occupancy_for(Piece(Piece::Type::King, request.turn_to_move()));
+        auto attacked_positions = board->color_attacks()[invert_color(request.turn_to_move())];
+
+        return (king_position & attacked_positions).any();
+    });
+
     return result;
 }
 

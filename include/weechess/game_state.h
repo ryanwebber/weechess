@@ -4,6 +4,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <weechess/board.h>
@@ -24,6 +25,10 @@ struct CastleRights {
 
     static constexpr CastleRights none() { return { false, false }; };
     static constexpr CastleRights all() { return { true, true }; };
+};
+
+struct MoveArtifact {
+    Board resulting_board;
 };
 
 class MoveSet {
@@ -75,7 +80,10 @@ public:
     static std::optional<GameState> from_fen(std::string_view);
     static GameState new_game();
     static std::optional<GameState> by_performing_move(const GameState&, const Move&);
-    static std::optional<GameState> by_performing_moves(const GameState&, std::span<const Move>);
+    static std::optional<GameState> by_performing_moves(const GameState&, std::span<const std::shared_ptr<MoveQuery>>);
+
+    static std::optional<Board> augmented_board_for_move(
+        const Board&, const Move&, std::optional<Location> en_passant_target);
 
 private:
     Board m_board;

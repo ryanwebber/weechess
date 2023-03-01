@@ -12,7 +12,7 @@ uint64_t do_perft(weechess::GameState gs, int depth, bool print = false)
 {
     if (depth == 0) {
         return 1;
-    } else if (depth == 1) {
+    } else if (depth == 1 && !print) {
         return gs.move_set().legal_moves().size();
     }
 
@@ -23,27 +23,30 @@ uint64_t do_perft(weechess::GameState gs, int depth, bool print = false)
         count += result;
 
         if (print) {
-            // UNSCOPED_INFO("Perft[" << depth << "] = " << result << "\n" << gs.verbose_description(move) << "\n\n");
-            UNSCOPED_INFO(gs.san_notation(move) << ": " << result << "\n");
+            // UNSCOPED_INFO(gs.san_notation(move) << ": " << result << "\n");
+            UNSCOPED_INFO(
+                move.start_location().to_string() << move.end_location().to_string() << ": " << result << "\n");
         }
     }
 
     return count;
 }
 
-TEST_CASE("Perft move generation counts", "[movegen]")
+TEST_CASE("Perft move generation counts", "[!benchmark][perft]")
 {
     using namespace weechess;
 
-    SECTION("Position 5", "[!mayfail]")
+    SECTION("Initial Position")
+    {
+        // https://www.chessprogramming.org/Perft_Results#Initial_Position
+        auto gs = GameState::new_game();
+        CHECK(do_perft(gs, 5) == 4865609);
+    }
+
+    SECTION("Position 5")
     {
         // https://www.chessprogramming.org/Perft_Results#Position_5
         auto gs = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
-
-        CHECK(do_perft(gs, 1, true) == 44);
-        CHECK(do_perft(gs, 2, true) == 1486);
-        CHECK(do_perft(gs, 3, true) == 62379);
-        CHECK(do_perft(gs, 4, true) == 2103487);
         CHECK(do_perft(gs, 5, true) == 89941194);
     }
 }
