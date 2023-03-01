@@ -80,14 +80,14 @@ public:
             return false;
         }
 
-        auto move = possible_moves[0];
+        auto legal_move = possible_moves[0];
         m_controller.update_state([&](AppController::State& state) {
             state.move_history.push_back({
-                move,
-                state.game_state.san_notation(move),
+                legal_move.move(),
+                legal_move->san_notation(state.game_state),
             });
 
-            state.game_state = weechess::GameState::by_performing_move(state.game_state, move).value();
+            state.game_state = weechess::GameState(legal_move.snapshot());
             return true;
         });
 
@@ -105,28 +105,6 @@ public:
 
     ~AppDelegate() = default;
 };
-
-uint64_t do_perft(weechess::GameState gs, int depth, bool print = false)
-{
-    if (depth == 0) {
-        return 1;
-    } else if (depth == 1) {
-        return gs.move_set().legal_moves().size();
-    }
-
-    uint64_t count = 0;
-    for (const auto& move : gs.move_set().legal_moves()) {
-        auto new_gs = weechess::GameState::by_performing_move(gs, move).value();
-        auto result = do_perft(std::move(new_gs), depth - 1);
-        count += result;
-
-        // if (print) {
-        //     UNSCOPED_INFO(gs.san_notation(move) << ": " << result << "\n");
-        // }
-    }
-
-    return count;
-}
 
 int main(int argc, char* argv[])
 {

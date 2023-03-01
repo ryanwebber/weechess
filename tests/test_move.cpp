@@ -34,18 +34,15 @@ TEST_CASE("Move short algebraic notation")
     using namespace weechess;
 
     auto game_state = GameState::from_fen("8/8/1prp4/1P1P4/8/8/8/8 w - - 0 1").value();
-    auto moves = game_state.move_set().legal_moves();
-    REQUIRE(moves.size() == 2);
+    auto move_set = game_state.move_set();
+    REQUIRE(move_set.legal_moves().size() == 2);
 
-    auto left_capture = std::find_if(
-        moves.begin(), moves.end(), [](const auto& move) { return move.start_location() == Location::D5; });
+    auto left_capture = move_set.find_first(LocationMoveQuery(Location::D5, Location::C6));
+    auto right_capture = move_set.find_first(LocationMoveQuery(Location::B5, Location::C6));
 
-    auto right_capture = std::find_if(
-        moves.begin(), moves.end(), [](const auto& move) { return move.start_location() == Location::B5; });
+    REQUIRE(left_capture.has_value());
+    REQUIRE(right_capture.has_value());
 
-    REQUIRE(left_capture != moves.end());
-    REQUIRE(right_capture != moves.end());
-
-    CHECK(left_capture->san_notation(game_state) == "dxc6");
-    CHECK(right_capture->san_notation(game_state) == "bxc6");
+    CHECK(left_capture->move().san_notation(game_state) == "dxc6");
+    CHECK(right_capture->move().san_notation(game_state) == "bxc6");
 }

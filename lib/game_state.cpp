@@ -9,91 +9,135 @@ namespace weechess {
 
 bool CastleRights::has_rights() const { return can_castle_kingside || can_castle_queenside; }
 
-MoveSet::MoveSet(std::vector<Move> legal_moves)
+GameSnapshot::GameSnapshot(Board board,
+    Color turn_to_move,
+    ColorMap<CastleRights> castle_rights,
+    std::optional<Location> en_passant_target,
+    size_t halfmove_clock,
+    size_t fullmove_number)
+    : board(std::move(board))
+    , turn_to_move(turn_to_move)
+    , castle_rights(castle_rights)
+    , en_passant_target(en_passant_target)
+    , halfmove_clock(halfmove_clock)
+    , fullmove_number(fullmove_number)
+{
+}
+
+std::optional<GameSnapshot> GameSnapshot::by_performing_move(const Move& move) const
+{
+    return GameSnapshot::by_performing_move(*this, move);
+}
+
+std::optional<GameSnapshot> GameSnapshot::by_performing_moves(std::span<const std::shared_ptr<MoveQuery>> moves) const
+{
+    return GameSnapshot::by_performing_moves(*this, moves);
+}
+
+std::string GameSnapshot::to_fen() const { return fen::to_fen(*this); }
+
+std::optional<GameSnapshot> GameSnapshot::from_fen(std::string_view fen_sv) { return fen::from_fen(fen_sv); }
+
+GameSnapshot GameSnapshot::initial_position() { return fen::from_fen(fen::initial_position).value(); }
+
+LegalMove::LegalMove(Move move, GameSnapshot snapshot)
+    : m_move(std::move(move))
+    , m_snapshot(std::move(snapshot))
+{
+}
+
+const Move& LegalMove::move() const { return m_move; }
+const GameSnapshot& LegalMove::snapshot() const { return m_snapshot; }
+
+const Move& LegalMove::operator*() const { return m_move; }
+const Move* LegalMove::operator->() const { return &m_move; }
+
+MoveSet::MoveSet(std::vector<LegalMove> legal_moves)
     : m_legal_moves(std::move(legal_moves))
 {
 }
 
-std::span<const Move> MoveSet::legal_moves() const { return m_legal_moves; };
-std::vector<Move> MoveSet::legal_moves_from(Location from) const
+std::span<const LegalMove> MoveSet::legal_moves() const { return m_legal_moves; };
+std::vector<LegalMove> MoveSet::legal_moves_from(Location from) const
 {
     LocationMoveQuery query(from);
     return find(query);
 }
 
-std::vector<Move> MoveSet::find(const MoveQuery& query) const
+std::vector<LegalMove> MoveSet::find(const MoveQuery& query) const
 {
-    std::vector<Move> result;
-    for (const auto& move : m_legal_moves) {
-        if (query.test(move)) {
-            result.push_back(move);
+    std::vector<LegalMove> result;
+    for (const auto& legal_move : m_legal_moves) {
+        if (query.test(legal_move.move())) {
+            result.push_back(legal_move);
         }
     }
 
     return result;
 }
 
-bool MoveSet::is_legal_move(const Move& move) const
+std::optional<LegalMove> MoveSet::find_first(const MoveQuery& query) const
 {
-    return std::find(m_legal_moves.begin(), m_legal_moves.end(), move) != m_legal_moves.end();
-}
+    auto iter = std::find_if(m_legal_moves.begin(), m_legal_moves.end(), [&query](const auto& legal_move) {
+        return query.test(legal_move.move());
+    });
 
-MoveSet MoveSet::compute_from(const GameState& gs)
-{
-    MoveGenerator::Request request(gs.board());
-    request.set_turn_to_move(gs.turn_to_move());
-    request.set_castle_rights(Color::White, gs.castle_rights()[Color::White]);
-    request.set_castle_rights(Color::Black, gs.castle_rights()[Color::Black]);
-
-    if (gs.en_passant_target().has_value()) {
-        request.set_en_passant_target(gs.en_passant_target().value());
+    if (iter == m_legal_moves.end()) {
+        return {};
     }
 
-    MoveGenerator generator;
-    auto result = generator.execute(request);
+    return *iter;
+}
 
+std::optional<LegalMove> MoveSet::find(const Move& move) const
+{
+    auto iter = std::find_if(m_legal_moves.begin(), m_legal_moves.end(), [&move](const auto& legal_move) {
+        return legal_move.move() == move;
+    });
+
+    if (iter == m_legal_moves.end()) {
+        return {};
+    }
+
+    return *iter;
+}
+
+MoveSet MoveSet::compute(const GameSnapshot& snapshot)
+{
+    MoveGenerator generator;
+    auto result = generator.execute(snapshot);
     return MoveSet(std::move(result.legal_moves));
 }
 
 GameState::GameState()
-    : m_turn_to_move(Color::White)
-    , m_castle_rights(CastleRights::all())
-    , m_en_passant_target({})
+    : m_snapshot({})
 {
 }
 
-GameState::GameState(Board board,
-    Color turn_to_move,
-    ColorMap<CastleRights> castle_rights,
-    std::optional<Location> en_passant_target,
-    size_t halfmove_clock,
-    size_t fullmove_number)
-    : m_board(std::move(board))
-    , m_turn_to_move(turn_to_move)
-    , m_castle_rights(castle_rights)
-    , m_en_passant_target(en_passant_target)
-    , m_halfmove_clock(halfmove_clock)
-    , m_fullmove_number(fullmove_number)
+GameState::GameState(GameSnapshot snapshot)
+    : m_snapshot(std::move(snapshot))
 {
 }
 
-const Color& GameState::turn_to_move() const { return m_turn_to_move; }
-const ColorMap<CastleRights>& GameState::castle_rights() const { return m_castle_rights; }
-const std::optional<Location>& GameState::en_passant_target() const { return m_en_passant_target; }
+const Color& GameState::turn_to_move() const { return m_snapshot.turn_to_move; }
+const ColorMap<CastleRights>& GameState::castle_rights() const { return m_snapshot.castle_rights; }
+const std::optional<Location>& GameState::en_passant_target() const { return m_snapshot.en_passant_target; }
 
-size_t GameState::halfmove_clock() const { return m_halfmove_clock; }
-size_t GameState::fullmove_number() const { return m_fullmove_number; }
+size_t GameState::halfmove_clock() const { return m_snapshot.halfmove_clock; }
+size_t GameState::fullmove_number() const { return m_snapshot.fullmove_number; }
 
 bool GameState::is_check() const { return false; }
 bool GameState::is_checkmate() const { return move_set().legal_moves().empty() && is_check(); }
 bool GameState::is_stalemate() const { return move_set().legal_moves().empty() && !is_check(); }
 
-const Board& GameState::board() const { return m_board; }
+const GameSnapshot& GameState::snapshot() const { return m_snapshot; }
+
+const Board& GameState::board() const { return m_snapshot.board; }
 const MoveSet& GameState::move_set() const
 {
     if (!m_move_set.has_value()) {
         auto mut_this = const_cast<GameState*>(this);
-        mut_this->m_move_set = MoveSet::compute_from(*this);
+        mut_this->m_move_set = MoveSet::compute(m_snapshot);
     }
 
     return m_move_set.value();
@@ -113,7 +157,8 @@ std::string GameState::san_notation(const Move& move) const
         ss << static_cast<char>(std::toupper(piece.to_letter()));
 
         std::vector<Location> alternative_possible_sources;
-        for (const auto& move : move_set().legal_moves()) {
+        for (const auto& legal_move : move_set().legal_moves()) {
+            const auto& move = legal_move.move();
             if (move.end_location() == target && move.start_location() != origin && move.moving_piece() == piece) {
                 alternative_possible_sources.push_back(move.start_location());
             }
@@ -143,7 +188,7 @@ std::string GameState::verbose_description(const Move& move) const
 {
     std::stringstream ss;
 
-    auto gs2 = GameState::by_performing_move(*this, move);
+    auto legal_move = move_set().find(move);
     auto move_from = move.start_location();
     auto move_to = move.end_location();
 
@@ -172,11 +217,11 @@ std::string GameState::verbose_description(const Move& move) const
             ss << "           ";
         }
 
-        if (gs2.has_value()) {
+        if (legal_move.has_value()) {
             for (auto file = 0; file < 8; file++) {
                 auto loc = Location::from_rank_and_file(rank, file);
 
-                auto piece = gs2->board().piece_at(loc);
+                auto piece = legal_move->snapshot().board.piece_at(loc);
                 auto letter = piece.exists() ? piece.to_letter() : '.';
 
                 if (loc == move_from || loc == move_to) {
@@ -204,7 +249,7 @@ std::string GameState::verbose_description(const Move& move) const
 
     ss << "Capture:    ";
     if (move.is_capture()) {
-        ss << Piece(move.captured_piece_type(), invert_color(m_turn_to_move)).to_letter();
+        ss << Piece(move.captured_piece_type(), invert_color(m_snapshot.turn_to_move)).to_letter();
     } else {
         ss << "-";
     }
@@ -212,7 +257,7 @@ std::string GameState::verbose_description(const Move& move) const
 
     ss << "Promotion:  ";
     if (move.is_promotion()) {
-        ss << Piece(move.promoted_piece_type(), m_turn_to_move).to_letter();
+        ss << Piece(move.promoted_piece_type(), m_snapshot.turn_to_move).to_letter();
     } else {
         ss << "-";
     }
@@ -238,53 +283,45 @@ std::string GameState::verbose_description(const Move& move) const
     return ss.str();
 }
 
-std::string GameState::to_fen() const { return fen::to_fen(*this); }
-std::optional<GameState> GameState::from_fen(std::string_view fen_sv) { return fen::from_fen(fen_sv); }
-
-GameState GameState::new_game() { return GameState::from_fen(fen::initial_gamestate_fen).value(); }
-
-std::optional<GameState> GameState::by_performing_move(const GameState& game_state, const Move& move)
+std::string GameState::to_fen() const { return m_snapshot.to_fen(); }
+std::optional<GameState> GameState::from_fen(std::string_view fen_sv)
 {
-    auto other_color = invert_color(game_state.turn_to_move());
-
-    // Check that the piece at the start location is the same color as the turn to move
-    if (game_state.board().piece_at(move.start_location()) != move.moving_piece()) {
-        log::error("Move {} does not seem to fit the board right (expected: {})",
-            game_state.san_notation(move),
-            game_state.board().piece_at(move.start_location()).to_letter());
+    auto snapshot = GameSnapshot::from_fen(fen_sv);
+    if (!snapshot.has_value())
         return {};
-    }
+    return GameState(*snapshot);
+}
 
-    // Make sure this move is actually legal
-    if (!game_state.move_set().is_legal_move(move)) {
-        log::error("Move {} is not a listed legal move", game_state.san_notation(move));
-        return {};
-    }
+GameState GameState::new_game() { return GameState(GameSnapshot::initial_position()); }
 
-    auto board = GameState::augmented_board_for_move(game_state.board(), move, game_state.en_passant_target());
+std::optional<GameSnapshot> GameSnapshot::by_performing_move(const GameSnapshot& snapshot, const Move& move)
+{
+    auto other_color = invert_color(snapshot.turn_to_move);
+
+    auto board = GameSnapshot::augmented_board_for_move(snapshot, move);
     if (!board)
         return {};
 
-    auto halfmove_clock = game_state.halfmove_clock() + 1;
+    auto halfmove_clock = snapshot.halfmove_clock + 1;
     if (move.is_capture() || move.moving_piece().type() == Piece::Type::Pawn) {
         halfmove_clock = 0;
     }
 
-    auto fullmove_number = game_state.fullmove_number();
-    if (game_state.turn_to_move() == Color::Black) {
+    auto fullmove_number = snapshot.fullmove_number;
+    if (snapshot.turn_to_move == Color::Black) {
         fullmove_number++;
     }
 
     auto en_passant_target = std::optional<Location>();
     if (move.is_double_pawn()) {
-        auto rank_offset = game_state.turn_to_move() == Color::White ? 1 : -1;
+        auto rank_offset = snapshot.turn_to_move == Color::White ? 1 : -1;
         en_passant_target = move.start_location().offset_by(Location::RankShift { rank_offset });
     }
 
-    auto castle_rights = game_state.castle_rights();
+    auto castle_rights = snapshot.castle_rights;
     if (move.moving_piece().type() == Piece::Type::King) {
-        castle_rights[game_state.turn_to_move()].can_castle_kingside = false;
-        castle_rights[game_state.turn_to_move()].can_castle_queenside = false;
+        castle_rights[snapshot.turn_to_move].can_castle_kingside = false;
+        castle_rights[snapshot.turn_to_move].can_castle_queenside = false;
     }
 
     castle_rights[Color::Black].can_castle_kingside
@@ -296,35 +333,53 @@ std::optional<GameState> GameState::by_performing_move(const GameState& game_sta
     castle_rights[Color::White].can_castle_queenside
         &= board->occupancy_for(Piece(Piece::Type::Rook, Color::White))[Location::A1];
 
-    return GameState(std::move(*board), other_color, castle_rights, en_passant_target, halfmove_clock, fullmove_number);
+    return GameSnapshot(
+        std::move(*board), other_color, castle_rights, en_passant_target, halfmove_clock, fullmove_number);
 }
 
-std::optional<Board> GameState::augmented_board_for_move(
-    const Board& board, const Move& move, std::optional<Location> en_passant_target)
+std::optional<GameSnapshot> GameSnapshot::by_performing_moves(
+    const GameSnapshot& snapshot, std::span<const std::shared_ptr<MoveQuery>> moves)
+{
+    std::optional<GameSnapshot> gs = snapshot;
+    auto moves_to_make = moves.begin();
+    while (gs.has_value() && moves_to_make != moves.end()) {
+        auto move_set = MoveSet::compute(*gs);
+        if (move_set.legal_moves().empty()) {
+            return {};
+        }
+
+        gs = move_set.legal_moves()[0].snapshot();
+        moves_to_make++;
+    }
+
+    return gs;
+}
+
+std::optional<Board> GameSnapshot::augmented_board_for_move(const GameSnapshot& snapshot, const Move& move)
 {
     auto moving_piece = move.moving_piece();
     auto resulting_piece = move.resulting_piece();
     auto color = move.color();
     auto other_color = invert_color(color);
 
-    auto buffer = board.piece_buffer();
+    auto buffer = snapshot.board.piece_buffer();
 
     // Start and end positions of the piece
     buffer.occupancy_for(moving_piece).unset(move.start_location());
     buffer.occupancy_for(resulting_piece).set(move.end_location());
 
     if (move.is_en_passant()) {
-        if (!en_passant_target.has_value()) {
+        if (!snapshot.en_passant_target.has_value()) {
             log::error("Move is an en passant move, but no en passant target is set");
             return {};
         }
 
         auto captured_piece = Piece(Piece::Type::Pawn, other_color);
         if (other_color == Color::Black) {
-            auto removed_location = en_passant_target->offset_by(Location::RankShift { -1 }).value();
+            auto removed_location = snapshot.en_passant_target->offset_by(Location::RankShift { -1 }).value();
             buffer.occupancy_for(captured_piece).unset(removed_location);
         } else {
-            auto removed_location = en_passant_target->offset_by(Location::RankShift { 1 }).value();
+            auto removed_location = snapshot.en_passant_target->offset_by(Location::RankShift { 1 }).value();
             buffer.occupancy_for(captured_piece).unset(removed_location);
         }
     } else if (move.is_capture()) {
@@ -354,24 +409,6 @@ std::optional<Board> GameState::augmented_board_for_move(
     }
 
     return Board(std::move(buffer));
-}
-
-std::optional<GameState> GameState::by_performing_moves(
-    const GameState& game_state, std::span<const std::shared_ptr<MoveQuery>> moves)
-{
-    std::optional<GameState> gs = game_state;
-    auto moves_to_make = moves.begin();
-    while (gs.has_value() && moves_to_make != moves.end()) {
-        auto moves = gs->move_set().find(**moves_to_make);
-        if (moves.empty()) {
-            return {};
-        }
-
-        gs = weechess::GameState::by_performing_move(*gs, moves[0]);
-        moves_to_make++;
-    }
-
-    return gs;
 }
 
 } // namespace weechess

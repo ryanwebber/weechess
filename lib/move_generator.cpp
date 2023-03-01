@@ -26,26 +26,26 @@ namespace {
 
     class Helper {
     private:
-        const MoveGenerator::Request& m_request;
+        const GameSnapshot& m_snapshot;
 
     public:
-        Helper(const MoveGenerator::Request& request)
-            : m_request(request)
+        Helper(const GameSnapshot& snapshot)
+            : m_snapshot(snapshot)
         {
         }
 
-        const Board& board() const { return m_request.board(); }
+        const Board& board() const { return m_snapshot.board; }
 
-        Color color_to_move() const { return m_request.turn_to_move(); }
-        Piece piece_to_move(Piece::Type type) const { return Piece(type, m_request.turn_to_move()); }
+        Color color_to_move() const { return m_snapshot.turn_to_move; }
+        Piece piece_to_move(Piece::Type type) const { return Piece(type, m_snapshot.turn_to_move); }
 
-        std::optional<Location> en_passant_target() const { return m_request.en_passant_target(); }
+        std::optional<Location> en_passant_target() const { return m_snapshot.en_passant_target; }
 
-        CastleRights castle_rights_to_move() const { return m_request.castle_rights()[color_to_move()]; }
+        CastleRights castle_rights_to_move() const { return m_snapshot.castle_rights[color_to_move()]; }
 
         Location forward(Location location) const
         {
-            if (m_request.turn_to_move() == Color::White)
+            if (m_snapshot.turn_to_move == Color::White)
                 return location.offset_by(Location::Up).value();
             else
                 return location.offset_by(Location::Down).value();
@@ -53,7 +53,7 @@ namespace {
 
         Location backward(Location location) const
         {
-            if (m_request.turn_to_move() == Color::White)
+            if (m_snapshot.turn_to_move == Color::White)
                 return location.offset_by(Location::Down).value();
             else
                 return location.offset_by(Location::Up).value();
@@ -61,7 +61,7 @@ namespace {
 
         Location file_shifted(Location location, int8_t sign) const
         {
-            if ((m_request.turn_to_move() == Color::White) == (sign > 0))
+            if ((m_snapshot.turn_to_move == Color::White) == (sign > 0))
                 return location.offset_by(Location::Right).value();
             else
                 return location.offset_by(Location::Left).value();
@@ -69,7 +69,7 @@ namespace {
 
         BitBoard file_shifted(BitBoard bb, int8_t sign) const
         {
-            if ((m_request.turn_to_move() == Color::White) == (sign > 0))
+            if ((m_snapshot.turn_to_move == Color::White) == (sign > 0))
                 return (bb & ~File('H').mask()) << 1;
             else
                 return (bb & ~File('A').mask()) >> 1;
@@ -77,7 +77,7 @@ namespace {
 
         BitBoard backrank_mask() const
         {
-            if (m_request.turn_to_move() == Color::White)
+            if (m_snapshot.turn_to_move == Color::White)
                 return Rank(8).mask();
             else
                 return Rank(1).mask();
@@ -85,7 +85,7 @@ namespace {
 
         BitBoard home_rank_mask(Rank rank) const
         {
-            if (m_request.turn_to_move() == Color::White)
+            if (m_snapshot.turn_to_move == Color::White)
                 return rank.mask();
             else
                 return rank.inverted().mask();
@@ -93,7 +93,7 @@ namespace {
 
         BitBoard edge_file_mask(int sign) const
         {
-            if ((m_request.turn_to_move() == Color::White) == (sign > 0))
+            if ((m_snapshot.turn_to_move == Color::White) == (sign > 0))
                 return File('H').mask();
             else
                 return File('A').mask();
@@ -101,7 +101,7 @@ namespace {
 
         BitBoard shift_forward(BitBoard bb) const
         {
-            if (m_request.turn_to_move() == Color::White)
+            if (m_snapshot.turn_to_move == Color::White)
                 return bb << 8;
             else
                 return bb >> 8;
@@ -109,26 +109,26 @@ namespace {
 
         BitBoard occupancy_to_move(Piece::Type type) const
         {
-            return m_request.board().occupancy_for(Piece(type, m_request.turn_to_move()));
+            return m_snapshot.board.occupancy_for(Piece(type, m_snapshot.turn_to_move));
         }
 
         BitBoard attackable() const
         {
-            auto other_color = invert_color(m_request.turn_to_move());
-            return m_request.board().color_occupancy()[other_color];
+            auto other_color = invert_color(m_snapshot.turn_to_move);
+            return m_snapshot.board.color_occupancy()[other_color];
         }
 
         BitBoard threats() const
         {
-            auto other_color = invert_color(m_request.turn_to_move());
-            return m_request.board().color_attacks()[other_color];
+            auto other_color = invert_color(m_snapshot.turn_to_move);
+            return m_snapshot.board.color_attacks()[other_color];
         }
 
         BitBoard en_passant_mask() const
         {
             BitBoard bb;
-            if (m_request.en_passant_target().has_value()) {
-                bb.set(m_request.en_passant_target().value());
+            if (m_snapshot.en_passant_target.has_value()) {
+                bb.set(m_snapshot.en_passant_target.value());
             }
 
             return bb;
@@ -317,9 +317,9 @@ namespace {
         }
     }
 
-    void generate_psuedo_legal_moves(const MoveGenerator::Request& request, std::vector<Move>& moves)
+    void generate_psuedo_legal_moves(const GameSnapshot& snapshot, std::vector<Move>& moves)
     {
-        Helper helper(request);
+        Helper helper(snapshot);
         generate_pawn_moves(helper, moves);
         generate_knight_moves(helper, moves);
         generate_king_moves(helper, moves);
@@ -329,35 +329,27 @@ namespace {
     }
 }
 
-MoveGenerator::Request::Request(Board board)
-    : m_board(board)
-    , m_turn_to_move(Color::White)
-    , m_castle_rights(CastleRights::all())
-    , m_en_passant_target({})
-{
-}
-
-void MoveGenerator::Request::set_turn_to_move(Color color) { m_turn_to_move = color; }
-void MoveGenerator::Request::set_castle_rights(Color color, CastleRights rights) { m_castle_rights[color] = rights; }
-void MoveGenerator::Request::set_en_passant_target(const Location& location) { m_en_passant_target = location; }
-
-MoveGenerator::Result MoveGenerator::execute(const Request& request) const
+MoveGenerator::Result MoveGenerator::execute(const GameSnapshot& snapshot) const
 {
     Result result;
 
     // Reserve a reasonable amount of space for the legal moves
     // to avoid reallocations.
-    result.legal_moves.reserve(128);
+    std::vector<Move> moves;
+    moves.reserve(128);
 
-    generate_psuedo_legal_moves(request, result.legal_moves);
+    generate_psuedo_legal_moves(snapshot, moves);
 
-    std::erase_if(result.legal_moves, [&](const Move& move) {
-        auto board = GameState::augmented_board_for_move(request.board(), move, request.en_passant_target());
-        auto king_position = board->occupancy_for(Piece(Piece::Type::King, request.turn_to_move()));
-        auto attacked_positions = board->color_attacks()[invert_color(request.turn_to_move())];
+    result.legal_moves.reserve(moves.size());
+    for (const auto& move : moves) {
+        auto new_snapshot = snapshot.by_performing_move(move);
+        auto king_position = new_snapshot->board.occupancy_for(Piece(Piece::Type::King, snapshot.turn_to_move));
+        auto attacked_positions = new_snapshot->board.color_attacks()[new_snapshot->turn_to_move];
 
-        return (king_position & attacked_positions).any();
-    });
+        if ((king_position & attacked_positions).none()) {
+            result.legal_moves.emplace_back(move, std::move(*new_snapshot));
+        }
+    }
 
     return result;
 }

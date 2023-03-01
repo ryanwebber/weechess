@@ -42,12 +42,12 @@ std::optional<Location> location_from_fen_fragment(std::string_view fragment);
 std::optional<Piece> piece_from_fen(char c);
 std::optional<char> piece_to_fen(const Piece& piece);
 
-std::string to_fen(const GameState& game_state)
+std::string to_fen(const GameSnapshot& snapshot)
 {
-    auto cells = game_state.board().to_array();
-    auto turn_to_move = game_state.turn_to_move();
-    auto castle_rights = game_state.castle_rights();
-    auto en_passant_target = game_state.en_passant_target();
+    const auto& cells = snapshot.board.to_array();
+    const auto& turn_to_move = snapshot.turn_to_move;
+    const auto& castle_rights = snapshot.castle_rights;
+    const auto& en_passant_target = snapshot.en_passant_target;
 
     std::string fen_str;
     uint8_t space_count = 0;
@@ -106,13 +106,13 @@ std::string to_fen(const GameState& game_state)
         fen_str += "-";
     }
 
-    fen_str += " " + std::to_string(game_state.halfmove_clock());
-    fen_str += " " + std::to_string(game_state.fullmove_number());
+    fen_str += " " + std::to_string(snapshot.halfmove_clock);
+    fen_str += " " + std::to_string(snapshot.fullmove_number);
 
     return fen_str;
 }
 
-std::optional<GameState> from_fen(std::string_view fen_sv)
+std::optional<GameSnapshot> from_fen(std::string_view fen_sv)
 {
     std::regex re(regex_string);
     std::match_results<std::string_view::const_iterator> match;
@@ -142,7 +142,7 @@ std::optional<GameState> from_fen(std::string_view fen_sv)
     size_t half_move_clock = std::stoul(half_move_clock_string);
     size_t full_move_number = std::stoul(full_move_number_string);
 
-    return GameState(board, turn_to_move, castle_rights, en_passant_target, half_move_clock, full_move_number);
+    return GameSnapshot(board, turn_to_move, castle_rights, en_passant_target, half_move_clock, full_move_number);
 }
 
 std::optional<Board> board_from_fen_fragment(std::string_view fragment)

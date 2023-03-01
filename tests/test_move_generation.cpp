@@ -8,24 +8,22 @@
 #include <weechess/move_generator.h>
 
 // Simple perft implementation - this should be a command
-uint64_t do_perft(weechess::GameState gs, int depth, bool print = false)
+uint64_t do_perft(const weechess::GameState& game_state, int depth, bool print = false)
 {
     if (depth == 0) {
         return 1;
     } else if (depth == 1 && !print) {
-        return gs.move_set().legal_moves().size();
+        return game_state.move_set().legal_moves().size();
     }
 
     uint64_t count = 0;
-    for (const auto& move : gs.move_set().legal_moves()) {
-        auto new_gs = weechess::GameState::by_performing_move(gs, move).value();
+    for (const auto& legal_move : game_state.move_set().legal_moves()) {
+        auto new_gs = weechess::GameState(legal_move.snapshot());
         auto result = do_perft(new_gs, depth - 1);
         count += result;
 
         if (print) {
-            // UNSCOPED_INFO(gs.san_notation(move) << ": " << result << "\n");
-            UNSCOPED_INFO(
-                move.start_location().to_string() << move.end_location().to_string() << ": " << result << "\n");
+            UNSCOPED_INFO(game_state.san_notation(legal_move.move()) << ": " << result << "\n");
         }
     }
 
@@ -214,27 +212,21 @@ TEST_CASE("Pawn move generation", "[movegen]")
     SECTION("Capturing moves")
     {
         auto game_state = GameState::from_fen("8/8/8/8/8/1nr5/2P5/8 w - - 0 1").value();
-        auto moves = game_state.move_set().legal_moves();
+        auto legal_moves = game_state.move_set().legal_moves();
 
-        REQUIRE(moves.size() == 1);
-        CHECK(moves[0].start_location() == Location::C2);
-        CHECK(moves[0].end_location() == Location::B3);
-        CHECK(moves[0].is_capture());
-        CHECK(moves[0].captured_piece_type() == Piece::Type::Knight);
+        REQUIRE(legal_moves.size() == 1);
+        CHECK(legal_moves[0].move().start_location() == Location::C2);
+        CHECK(legal_moves[0].move().end_location() == Location::B3);
+        CHECK(legal_moves[0].move().is_capture());
+        CHECK(legal_moves[0].move().captured_piece_type() == Piece::Type::Knight);
     }
 
     SECTION("Double moves")
     {
         auto game_state = GameState::from_fen("8/8/8/8/8/8/2P5/8 w - - 0 1").value();
-        auto moves = game_state.move_set().legal_moves();
-
-        auto dbl_move = std::find_if(moves.begin(), moves.end(), [](const Move& m) {
-            ;
-            return m.end_location() == Location::C4;
-        });
-
-        REQUIRE(dbl_move != moves.end());
-        CHECK(dbl_move->is_double_pawn());
+        auto legal_moves = game_state.move_set().find(LocationMoveQuery(Location::C2, Location::C4));
+        REQUIRE(legal_moves.size() == 1);
+        CHECK(legal_moves[0].move().is_double_pawn());
     }
 
     SECTION("Blocked moves")
@@ -247,11 +239,10 @@ TEST_CASE("Pawn move generation", "[movegen]")
     SECTION("Promoting moves")
     {
         auto game_state = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
-        auto moves = game_state.move_set().legal_moves();
+        auto legal_moves = game_state.move_set().legal_moves();
 
-        auto count = std::count_if(moves.begin(), moves.end(), [](const Move& m) {
-            ;
-            return m.is_promotion();
+        auto count = std::count_if(legal_moves.begin(), legal_moves.end(), [](const LegalMove& legal_move) {
+            return legal_move->is_promotion();
         });
 
         REQUIRE(count == 4);

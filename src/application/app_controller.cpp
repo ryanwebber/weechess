@@ -88,14 +88,14 @@ AppController::AppController()
                 return;
             }
 
-            const auto& move = possible_moves[0];
+            const auto& legal_move = possible_moves[0];
             update_state([&](State& state) {
                 state.move_history.push_back({
-                    move,
-                    state.game_state.san_notation(move),
+                    legal_move.move(),
+                    state.game_state.san_notation(legal_move.move()),
                 });
 
-                state.game_state = weechess::GameState::by_performing_move(state.game_state, move).value();
+                state.game_state = weechess::GameState(legal_move.snapshot());
                 return true;
             });
 
@@ -320,9 +320,9 @@ ftxui::Element AppController::render()
     // Highlight the possible moves
     if (move_to_show_hints.has_value()) {
         auto hint_location = oriented_location(move_to_show_hints.value(), k_orientation);
-        auto moves = m_state.game_state.move_set().legal_moves_from(hint_location);
-        for (auto& m : moves) {
-            auto location = oriented_location(m.end_location(), k_orientation);
+        auto legal_moves = m_state.game_state.move_set().legal_moves_from(hint_location);
+        for (auto& legal_move : legal_moves) {
+            auto location = oriented_location(legal_move->end_location(), k_orientation);
             auto cell = bp[location];
             if (*cell == u' ')
                 cell.paint_symbol(u'•');

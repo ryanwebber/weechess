@@ -15,24 +15,21 @@ struct TestCase {
 
     void run()
     {
-        auto gs = weechess::GameState::from_fen(begin_fen);
-        auto moves_to_make = moves.begin();
+        auto snapshot = weechess::GameSnapshot::from_fen(begin_fen);
+        auto moves_itr = moves.begin();
         auto i = 0;
-        while (gs.has_value() && moves_to_make != moves.end()) {
-            REQUIRE(gs.has_value());
-
-            INFO("[" << (i++) << "] FEN: \"" << gs->to_fen() << "\"");
-            auto moves = gs->move_set().find(**moves_to_make);
+        while (snapshot.has_value() && moves_itr != moves.end()) {
+            INFO("[" << (i++) << "] FEN: \"" << snapshot->to_fen() << "\"");
+            auto move_set = weechess::MoveSet::compute(*snapshot);
+            auto moves = move_set.find(**moves_itr);
             REQUIRE(moves.size() == 1);
 
-            UNSCOPED_INFO("Applying move:\n" << gs->verbose_description(moves[0]));
-
-            gs = weechess::GameState::by_performing_move(*gs, moves[0]);
-            moves_to_make++;
+            snapshot = moves[0].snapshot();
+            moves_itr++;
         }
 
-        REQUIRE(gs.has_value());
-        CHECK(gs->to_fen() == end_fen);
+        REQUIRE(snapshot.has_value());
+        CHECK(snapshot->to_fen() == end_fen);
     }
 };
 
@@ -44,13 +41,13 @@ TEST_CASE("Applying moves to game states", "[rules]")
     {
         auto gs = GameState::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").value();
 
-        const auto& moves = gs.move_set().legal_moves();
-        CHECK(moves.size() != 0);
+        const auto& legal_moves = gs.move_set().legal_moves();
+        CHECK(legal_moves.size() != 0);
 
-        for (const auto& move : moves) {
-            const auto& gs_prime = GameState::by_performing_move(gs, move);
-            INFO(gs.verbose_description(move));
-            CHECK(gs_prime.has_value());
+        for (const auto& legal_move : legal_moves) {
+            const auto snapshot = gs.snapshot().by_performing_move(legal_move.move());
+            INFO(gs.verbose_description(legal_move.move()));
+            CHECK(snapshot.has_value());
         }
     }
 
