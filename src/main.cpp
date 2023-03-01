@@ -69,23 +69,29 @@ public:
         });
     }
 
-    bool cmd_move_piece(weechess::Move move) override
+    bool cmd_perform_move(const weechess::MoveQuery& query) override
     {
-        if (m_controller.state().game_state.move_set().is_legal_move(move)) {
-            m_controller.update_state([&](AppController::State& state) {
-                state.move_history.push_back({
-                    state.game_state.board().piece_at(move.start_location()),
-                    move.end_location(),
-                });
-
-                state.game_state = weechess::GameState::by_performing_move(state.game_state, move).value();
-                return true;
-            });
-
-            return true;
-        } else {
+        auto possible_moves = m_controller.state().game_state.move_set().find(query);
+        if (possible_moves.size() == 0) {
+            write_stderr("Illegal move");
+            return false;
+        } else if (possible_moves.size() > 1) {
+            write_stderr("Ambiguous move");
             return false;
         }
+
+        auto move = possible_moves[0];
+        m_controller.update_state([&](AppController::State& state) {
+            state.move_history.push_back({
+                move,
+                state.game_state.san_notation(move),
+            });
+
+            state.game_state = weechess::GameState::by_performing_move(state.game_state, move).value();
+            return true;
+        });
+
+        return true;
     }
 
     static std::shared_ptr<AppDelegate> make_shared(AppController& controller, std::function<void()> exit_closure)
@@ -130,20 +136,19 @@ int main(int argc, char* argv[])
     }
 
     auto gamestate = weechess::GameState::new_game();
-    do_perft(gamestate, 6, true);
 
-    // log::init_logging();
+    log::init_logging();
 
-    // auto screen = ftxui::ScreenInteractive::Fullscreen();
+    auto screen = ftxui::ScreenInteractive::Fullscreen();
 
-    // AppController controller;
-    // auto delegate = AppDelegate::make_shared(controller, screen.ExitLoopClosure());
-    // controller.set_delegate(delegate);
+    AppController controller;
+    auto delegate = AppDelegate::make_shared(controller, screen.ExitLoopClosure());
+    controller.set_delegate(delegate);
 
-    // controller.update_state([&](auto& state) {
-    //     state.game_state = gamestate;
-    //     return true;
-    // });
+    controller.update_state([&](auto& state) {
+        state.game_state = gamestate;
+        return true;
+    });
 
-    // screen.Loop(controller.renderer());
+    screen.Loop(controller.renderer());
 }

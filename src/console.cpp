@@ -87,17 +87,8 @@ public:
                 return;
             }
 
-            // TODO: Implement this - we need a move request object and lookup system
-            assert(false);
-            // if (!service->cmd_move_piece(weechess::Move(*origin, *destination))) {
-            //     if (auto display = console.display().lock()) {
-            //         display->write_stderr("Illegal move: " + origin_sn + " → " + destination_sn);
-            //     }
-            // } else {
-            //     if (auto display = console.display().lock()) {
-            //         display->write_stdout(origin_sn + " → " + destination_sn);
-            //     }
-            // }
+            auto move_query = weechess::LocationMoveQuery(*origin, *destination);
+            service->cmd_perform_move(move_query);
         }
     }
 };

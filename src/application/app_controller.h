@@ -11,8 +11,8 @@
 class AppController {
 public:
     struct PastMove {
-        weechess::Piece piece;
-        weechess::Location location;
+        weechess::Move move;
+        std::string description;
     };
 
     struct CommandOutput {

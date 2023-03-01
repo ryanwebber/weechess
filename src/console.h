@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include <weechess/game_state.h>
 #include <weechess/move.h>
 
 #include "argparse.h"
@@ -23,7 +24,7 @@ public:
 
     class Service {
     public:
-        virtual bool cmd_move_piece(weechess::Move) = 0;
+        virtual bool cmd_perform_move(const weechess::MoveQuery&) = 0;
         virtual ~Service() = default;
     };
 

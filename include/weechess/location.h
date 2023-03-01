@@ -74,6 +74,12 @@ struct Location {
     static constexpr Location from_rank_and_file(uint8_t rank, uint8_t file) { return Location(rank, file); }
     static std::optional<Location> from_string(std::string_view);
 
+    static constexpr Location vertically_oriented(size_t offset)
+    {
+        Location l(offset);
+        return Location::from_rank_and_file(7 - l.rank(), l.file());
+    }
+
     friend bool operator==(Location const&, Location const&) = default;
 
     // All 64 individual locations with named variables

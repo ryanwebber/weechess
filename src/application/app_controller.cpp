@@ -10,6 +10,25 @@
 #include "../string_utils.h"
 #include "app_controller.h"
 
+constexpr weechess::Color k_orientation = weechess::Color::White;
+
+weechess::Location oriented_location(weechess::Location location, weechess::Color orientation)
+{
+    if (orientation == weechess::Color::Black)
+        return location;
+    else
+        return weechess::Location::from_rank_and_file(8 - location.rank() - 1, location.file());
+}
+
+weechess::Piece oriented_piece_at(
+    weechess::Location location, weechess::Color orientation, const weechess::Board& board)
+{
+    if (orientation == weechess::Color::Black)
+        return board.piece_at(location);
+    else
+        return board.piece_at(oriented_location(location, orientation));
+}
+
 std::vector<std::string> split(std::string_view sv)
 {
     std::stringstream ss((std::string(sv)));
@@ -53,14 +72,15 @@ AppController::AppController()
             return true;
         }
 
-        auto try_perform_move = [&](const weechess::Move& move) {
-            auto possible_moves = m_state.game_state.move_set().legal_moves_from(move.start_location());
-            if (std::find(possible_moves.begin(), possible_moves.end(), move) == possible_moves.end()) {
-
+        auto try_perform_move = [&](weechess::Location start_location, weechess::Location end_location) {
+            auto query = weechess::LocationMoveQuery(start_location, end_location);
+            auto possible_moves = m_state.game_state.move_set().find(query);
+            if (possible_moves.size() != 1) {
                 // User selected a different piece of their own. We obviously can't move there, so
                 // instead we select the new piece
-                if (m_state.game_state.board().piece_at(move.end_location()).is(m_state.game_state.turn_to_move())) {
-                    m_view_state.pinned_location = move.end_location();
+
+                if (m_state.game_state.board().piece_at(end_location).is(m_state.game_state.turn_to_move())) {
+                    m_view_state.pinned_location = end_location;
                 } else {
                     m_view_state.pinned_location = {};
                 }
@@ -68,11 +88,16 @@ AppController::AppController()
                 return;
             }
 
-            if (auto delegate = m_delegate.lock()) {
-                auto move_cmd = "move " + move.start_location().to_string() + " " + move.end_location().to_string();
-                m_state.command_output.push_back({ "> " + move_cmd, CommandOutput::Type::Command });
-                delegate->on_execute_command(*this, move_cmd);
-            }
+            const auto& move = possible_moves[0];
+            update_state([&](State& state) {
+                state.move_history.push_back({
+                    move,
+                    state.game_state.san_notation(move),
+                });
+
+                state.game_state = weechess::GameState::by_performing_move(state.game_state, move).value();
+                return true;
+            });
 
             m_view_state.pinned_location = {};
         };
@@ -97,10 +122,9 @@ AppController::AppController()
                     m_view_state.highlighted_location = weechess::Location::from_rank_and_file(rank, file);
 
                     if (m_view_state.pinned_location.has_value()) {
-                        // TODO: Find this move and apply it
-                        // auto from = m_view_state.pinned_location.value();
-                        // auto to = m_view_state.highlighted_location;
-                        assert(false);
+                        auto from = oriented_location(m_view_state.pinned_location.value(), k_orientation);
+                        auto to = oriented_location(m_view_state.highlighted_location, k_orientation);
+                        try_perform_move(from, to);
                     } else {
                         m_view_state.pinned_location = m_view_state.highlighted_location;
                     }
@@ -144,11 +168,11 @@ AppController::AppController()
                     m_view_state.highlighted_location = l.value();
                 return true;
             } else if (event == ftxui::Event::ArrowUp) {
-                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Up))
+                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Down))
                     m_view_state.highlighted_location = l.value();
                 return true;
             } else if (event == ftxui::Event::ArrowDown) {
-                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Down))
+                if (auto l = m_view_state.highlighted_location.offset_by(weechess::Location::Up))
                     m_view_state.highlighted_location = l.value();
                 return true;
             }
@@ -170,10 +194,9 @@ AppController::AppController()
             // Handle pressing enter to pin the location
             if (event == ftxui::Event::Return) {
                 if (m_view_state.pinned_location.has_value()) {
-                    // TODO: Find this move and apply it
-                    // auto from = m_view_state.pinned_location.value();
-                    // auto to = m_view_state.highlighted_location;
-                    assert(false);
+                    auto from = oriented_location(m_view_state.pinned_location.value(), k_orientation);
+                    auto to = oriented_location(m_view_state.highlighted_location, k_orientation);
+                    try_perform_move(from, to);
                 } else {
                     m_view_state.pinned_location = m_view_state.highlighted_location;
                 }
@@ -220,6 +243,7 @@ void AppController::update_state(std::function<bool(State&)> fn)
 }
 
 static const std::string rank_labels = " 1 2 3 4 5 6 7 8 ";
+static const std::string rank_labels_reversed = " 8 7 6 5 4 3 2 1 ";
 static const std::string file_labels = "  A   B   C   D   E   F   G   H  ";
 
 AppController::CommandInput::CommandInput() { m_input = ftxui::Input(&m_text, ""); }
@@ -259,8 +283,7 @@ ftxui::Element AppController::render()
     }
 
     if (m_view_state.pinned_location.has_value()
-        && !m_state.game_state.board()
-                .piece_at(m_view_state.pinned_location.value())
+        && !oriented_piece_at(m_view_state.pinned_location.value(), k_orientation, m_state.game_state.board())
                 .is(m_state.game_state.turn_to_move())) {
         m_view_state.pinned_location = {};
     }
@@ -270,10 +293,10 @@ ftxui::Element AppController::render()
 
     // Place the pieces on the board
     for (auto i = 0; i < weechess::Board::cell_count; i++) {
-        weechess::Location l(i);
-        auto piece = m_state.game_state.board().piece_at(l);
+        weechess::Location draw_location(i);
+        auto piece = oriented_piece_at(draw_location, k_orientation, m_state.game_state.board());
         if (piece.exists()) {
-            bp[l].paint_symbol(piece.to_symbol());
+            bp[draw_location].paint_symbol(piece.to_symbol());
         }
     }
 
@@ -296,9 +319,11 @@ ftxui::Element AppController::render()
 
     // Highlight the possible moves
     if (move_to_show_hints.has_value()) {
-        auto moves = m_state.game_state.move_set().legal_moves_from(move_to_show_hints.value());
+        auto hint_location = oriented_location(move_to_show_hints.value(), k_orientation);
+        auto moves = m_state.game_state.move_set().legal_moves_from(hint_location);
         for (auto& m : moves) {
-            auto cell = bp[m.end_location()];
+            auto location = oriented_location(m.end_location(), k_orientation);
+            auto cell = bp[location];
             if (*cell == u' ')
                 cell.paint_symbol(u'•');
             decorations[cell.offset()] = BoardDecoration::PossibleMove;
@@ -337,10 +362,6 @@ ftxui::Element AppController::render()
         board_rows.push_back(hbox(std::move(row_cells)));
     }
 
-    auto format_move = [](weechess::Piece piece, weechess::Location location) {
-        return to_string(piece.to_symbol()) + " → " + location.to_string();
-    };
-
     std::vector<std::vector<std::string>> history {};
 
     {
@@ -351,13 +372,8 @@ ftxui::Element AppController::render()
         i_start = ((i_start + 1) / 2) * 2;
 
         for (auto i = i_start; i < i_start + max_history; i += 2) {
-            auto s1 = i < m_state.move_history.size()
-                ? format_move(m_state.move_history[i].piece, m_state.move_history[i].location)
-                : "      ";
-
-            auto s2 = (i + 1) < m_state.move_history.size()
-                ? format_move(m_state.move_history[i + 1].piece, m_state.move_history[i + 1].location)
-                : "      ";
+            auto s1 = i < m_state.move_history.size() ? m_state.move_history[i].description : "      ";
+            auto s2 = (i + 1) < m_state.move_history.size() ? m_state.move_history[i + 1].description : "      ";
 
             history.push_back({
                 std::to_string(i / 2 + 1),
@@ -400,10 +416,12 @@ ftxui::Element AppController::render()
         command_history.push_back(p);
     }
 
+    const auto& current_rank_labels = k_orientation == weechess::Color::White ? rank_labels_reversed : rank_labels;
+
     // clang-format off
     auto document = vbox({
         hbox({
-            vtext(rank_labels) | hcenter | size(WIDTH, EQUAL, 3) | dim,
+            vtext(current_rank_labels) | hcenter | size(WIDTH, EQUAL, 3) | dim,
             vbox({
                 vbox(std::move(board_rows)) | reflect(m_view_state.chess_window_bounds),
                 text(file_labels) | hcenter | dim,
