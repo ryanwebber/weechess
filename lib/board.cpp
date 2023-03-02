@@ -3,7 +3,7 @@
 
 namespace weechess {
 
-size_t piece_index(Piece piece)
+inline size_t piece_index(Piece piece)
 {
     auto offset = piece.color == Color::White ? 0 : 7;
     return offset + static_cast<size_t>(piece.type);
@@ -23,18 +23,6 @@ Board::Board(Buffer piece_buffer)
         m_shared_occupancy |= occupancy;
         m_color_occupancy[piece.color] |= occupancy;
     }
-
-    for (const auto& piece : Piece::all_valid_pieces) {
-        auto occupancy = m_piece_buffer.occupancy_for(piece);
-        while (occupancy.any()) {
-            auto origin = occupancy.pop_lsb().value();
-            auto attacks = attack_maps::generate_attacks(piece, origin, m_shared_occupancy);
-            m_color_attacks[piece.color] |= attacks;
-        }
-    }
-
-    m_color_attacks[Color::White] &= ~m_color_occupancy[Color::White];
-    m_color_attacks[Color::Black] &= ~m_color_occupancy[Color::Black];
 }
 
 Piece Board::piece_at(Location location) const
@@ -56,8 +44,29 @@ const Board::Buffer& Board::piece_buffer() const { return m_piece_buffer; }
 const BitBoard& Board::occupancy_for(Piece piece) const { return m_piece_buffer.occupancy_for(piece); }
 const BitBoard& Board::shared_occupancy() const { return m_shared_occupancy; }
 const ColorMap<BitBoard>& Board::color_occupancy() const { return m_color_occupancy; }
-const ColorMap<BitBoard>& Board::color_attacks() const { return m_color_attacks; }
 BitBoard Board::non_occupancy() const { return ~m_shared_occupancy; }
+
+BitBoard Board::attacks(Color color) const
+{
+    if (m_color_attacks[color].none()) {
+        auto mut_this = const_cast<Board*>(this);
+        for (const auto& piece : Piece::all_valid_pieces) {
+            if (piece.color != color)
+                continue;
+
+            auto occupancy = mut_this->m_piece_buffer.occupancy_for(piece);
+            while (occupancy.any()) {
+                auto origin = occupancy.pop_lsb().value();
+                auto attacks = attack_maps::generate_attacks(piece, origin, m_shared_occupancy);
+                mut_this->m_color_attacks[color] |= attacks;
+            }
+        }
+
+        mut_this->m_color_attacks[color] &= ~m_color_occupancy[color];
+    }
+
+    return m_color_attacks[color];
+}
 
 std::array<Piece, 64> Board::to_array() const
 {

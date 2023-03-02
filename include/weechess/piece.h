@@ -60,6 +60,18 @@ struct Piece {
 
 Color invert_color(Color);
 
+inline Piece::Piece()
+    : type(Type::None)
+    , color(Color::White)
+{
+}
+
+inline Piece::Piece(Type type, Color color)
+    : type(type)
+    , color(color)
+{
+}
+
 inline bool Piece::is(Type t) const { return type == t; }
 inline bool Piece::is(Color c) const { return color == c; };
 inline bool Piece::exists() const { return type != Type::None; }

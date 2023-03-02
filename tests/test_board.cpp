@@ -78,5 +78,5 @@ TEST_CASE("Board attack map")
         Location::E8,
     };
 
-    CHECK(board.color_attacks()[Color::White] == BitBoard::from(expected_attacks));
+    CHECK(board.attacks(Color::White) == BitBoard::from(expected_attacks));
 }

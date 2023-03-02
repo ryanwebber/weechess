@@ -121,7 +121,7 @@ namespace {
         BitBoard threats() const
         {
             auto other_color = invert_color(m_snapshot.turn_to_move);
-            return m_snapshot.board.color_attacks()[other_color];
+            return m_snapshot.board.attacks(other_color);
         }
 
         BitBoard en_passant_mask() const
@@ -344,7 +344,7 @@ MoveGenerator::Result MoveGenerator::execute(const GameSnapshot& snapshot) const
     for (const auto& move : moves) {
         auto new_snapshot = snapshot.by_performing_move(move);
         auto king_position = new_snapshot->board.occupancy_for(Piece(Piece::Type::King, snapshot.turn_to_move));
-        auto attacked_positions = new_snapshot->board.color_attacks()[new_snapshot->turn_to_move];
+        auto attacked_positions = new_snapshot->board.attacks(new_snapshot->turn_to_move);
 
         if ((king_position & attacked_positions).none()) {
             result.legal_moves.emplace_back(move, std::move(*new_snapshot));

@@ -2,18 +2,6 @@
 
 namespace weechess {
 
-Piece::Piece()
-    : type(Type::None)
-    , color(Color::White)
-{
-}
-
-Piece::Piece(Type type, Color color)
-    : type(type)
-    , color(color)
-{
-}
-
 char16_t Piece::to_symbol() const
 {
     if (is(Type::Pawn)) {
