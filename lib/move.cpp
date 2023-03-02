@@ -84,10 +84,10 @@ std::optional<CastleSide> Move::castle_side() const
 Move Move::by_moving(Piece piece, Location from, Location to)
 {
     Move move;
-    move.set_piece_type(piece.type());
+    move.set_piece_type(piece.type);
     move.set_origin(from);
     move.set_destination(to);
-    move.set_color(piece.color());
+    move.set_color(piece.color);
     return move;
 }
 
@@ -116,11 +116,11 @@ Move Move::by_en_passant(Piece piece, Location from, Location to)
 Move Move::by_castling(Piece piece, CastleSide side)
 {
     Move move;
-    move.set_piece_type(piece.type());
-    move.set_color(piece.color());
+    move.set_piece_type(piece.type);
+    move.set_color(piece.color);
     if (side == CastleSide::Kingside) {
         move.set_flags(Flags::KingsideCastle, 1);
-        if (piece.color() == Color::White) {
+        if (piece.color == Color::White) {
             move.set_origin(Location::E1);
             move.set_destination(Location::G1);
         } else {
@@ -129,7 +129,7 @@ Move Move::by_castling(Piece piece, CastleSide side)
         }
     } else {
         move.set_flags(Flags::QueensideCastle, 1);
-        if (piece.color() == Color::White) {
+        if (piece.color == Color::White) {
             move.set_origin(Location::E1);
             move.set_destination(Location::C1);
         } else {

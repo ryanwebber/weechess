@@ -37,30 +37,34 @@ struct Piece {
         Type::King,
     };
 
-    uint8_t representation;
+    Type type;
+    Color color;
 
     Piece();
     Piece(Type type, Color color);
 
-    bool is(Type type) const;
-    bool is(Color color) const;
+    bool is(Type) const;
+    bool is(Color) const;
 
-    Type type() const;
-    Color color() const;
-
-    bool exists() const { return (representation & type_mask) != 0; }
-    bool is_none() const { return !exists(); }
+    bool exists() const;
+    bool is_none() const;
 
     char16_t to_symbol() const;
     char to_letter() const;
 
-    bool operator==(const Piece& other) const { return representation == other.representation; }
+    bool operator==(const Piece& other) const;
 
     static Piece none() { return Piece(); }
     static const std::array<Piece, 12> all_valid_pieces;
 };
 
 Color invert_color(Color);
+
+inline bool Piece::is(Type t) const { return type == t; }
+inline bool Piece::is(Color c) const { return color == c; };
+inline bool Piece::exists() const { return type != Type::None; }
+inline bool Piece::is_none() const { return type == Type::None; }
+inline bool Piece::operator==(const Piece& other) const { return other.type == type && other.color == color; };
 
 std::ostream& operator<<(std::ostream&, const Piece&);
 

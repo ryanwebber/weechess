@@ -514,13 +514,13 @@ namespace attack_maps {
 
     BitBoard generate_attacks(Piece piece, Location location, BitBoard blockers)
     {
-        switch (piece.type()) {
+        switch (piece.type) {
         case Piece::Type::Knight:
             return generate_knight_attacks(location);
         case Piece::Type::King:
             return generate_king_attacks(location);
         case Piece::Type::Pawn:
-            return generate_pawn_attacks(location, piece.color());
+            return generate_pawn_attacks(location, piece.color);
         case Piece::Type::Rook:
             return generate_rook_attacks(location, blockers);
         case Piece::Type::Bishop:

@@ -151,7 +151,7 @@ std::string GameState::san_notation(const Move& move) const
 
     std::stringstream ss;
 
-    if (piece.type() == Piece::Type::Pawn && move.is_capture()) {
+    if (piece.type == Piece::Type::Pawn && move.is_capture()) {
         ss << static_cast<char>('a' + origin.file());
     } else {
         ss << static_cast<char>(std::toupper(piece.to_letter()));
@@ -303,7 +303,7 @@ std::optional<GameSnapshot> GameSnapshot::by_performing_move(const GameSnapshot&
         return {};
 
     auto halfmove_clock = snapshot.halfmove_clock + 1;
-    if (move.is_capture() || move.moving_piece().type() == Piece::Type::Pawn) {
+    if (move.is_capture() || move.moving_piece().type == Piece::Type::Pawn) {
         halfmove_clock = 0;
     }
 
@@ -319,7 +319,7 @@ std::optional<GameSnapshot> GameSnapshot::by_performing_move(const GameSnapshot&
     }
 
     auto castle_rights = snapshot.castle_rights;
-    if (move.moving_piece().type() == Piece::Type::King) {
+    if (move.moving_piece().type == Piece::Type::King) {
         castle_rights[snapshot.turn_to_move].can_castle_kingside = false;
         castle_rights[snapshot.turn_to_move].can_castle_queenside = false;
     }

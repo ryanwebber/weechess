@@ -3,19 +3,16 @@
 namespace weechess {
 
 Piece::Piece()
-    : representation(0)
+    : type(Type::None)
+    , color(Color::White)
 {
 }
 
-Piece::Piece(Type type, Color color) { representation = static_cast<uint8_t>(type) | static_cast<uint8_t>(color); }
-
-bool Piece::is(Type type) const { return this->type() == type; }
-
-bool Piece::is(Color color) const { return exists() && ((representation & static_cast<uint8_t>(color)) != 0); }
-
-Color Piece::color() const { return static_cast<Color>(representation & 0b00011000); }
-
-Piece::Type Piece::type() const { return static_cast<Type>(representation & 0b00000111); }
+Piece::Piece(Type type, Color color)
+    : type(type)
+    , color(color)
+{
+}
 
 char16_t Piece::to_symbol() const
 {

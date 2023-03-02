@@ -5,8 +5,8 @@ namespace weechess {
 
 size_t piece_index(Piece piece)
 {
-    auto offset = piece.color() == Color::White ? 0 : 7;
-    return offset + static_cast<size_t>(piece.type());
+    auto offset = piece.color == Color::White ? 0 : 7;
+    return offset + static_cast<size_t>(piece.type);
 }
 
 BitBoard& Board::Buffer::occupancy_for(Piece piece) { return m_occupancy[piece_index(piece)]; }
@@ -21,7 +21,7 @@ Board::Board(Buffer piece_buffer)
     for (const auto& piece : Piece::all_valid_pieces) {
         const auto& occupancy = m_piece_buffer.occupancy_for(piece);
         m_shared_occupancy |= occupancy;
-        m_color_occupancy[piece.color()] |= occupancy;
+        m_color_occupancy[piece.color] |= occupancy;
     }
 
     for (const auto& piece : Piece::all_valid_pieces) {
@@ -29,7 +29,7 @@ Board::Board(Buffer piece_buffer)
         while (occupancy.any()) {
             auto origin = occupancy.pop_lsb().value();
             auto attacks = attack_maps::generate_attacks(piece, origin, m_shared_occupancy);
-            m_color_attacks[piece.color()] |= attacks;
+            m_color_attacks[piece.color] |= attacks;
         }
     }
 

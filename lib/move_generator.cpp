@@ -142,7 +142,7 @@ namespace {
         auto attacks = helper.attackable() & targets;
         while (attacks.any()) {
             auto target = attacks.pop_lsb().value();
-            auto move = Move::by_capturing(piece, origin, target, helper.board().piece_at(target).type());
+            auto move = Move::by_capturing(piece, origin, target, helper.board().piece_at(target).type);
             moves.push_back(move);
         }
 
@@ -213,14 +213,14 @@ namespace {
                 while (attacks.any()) {
                     auto target = attacks.pop_lsb().value();
                     auto origin = helper.backward(helper.file_shifted(target, -sign));
-                    auto move = Move::by_capturing(piece, origin, target, helper.board().piece_at(target).type());
+                    auto move = Move::by_capturing(piece, origin, target, helper.board().piece_at(target).type);
                     moves.push_back(move);
                 }
 
                 // Promotion captures
                 while (attacks_with_promotion.any()) {
                     auto target = attacks_with_promotion.pop_lsb().value();
-                    auto capture = helper.board().piece_at(target).type();
+                    auto capture = helper.board().piece_at(target).type;
                     for (const auto& type : promotion_types) {
                         auto move = Move::by_promoting(
                             piece, helper.backward(helper.file_shifted(target, -sign)), target, type);
