@@ -5,10 +5,10 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/table.hpp>
 
-#include "../board_printer.h"
-#include "../log.h"
-#include "../string_utils.h"
 #include "app_controller.h"
+#include "board_printer.h"
+#include "log.h"
+#include "string_utils.h"
 
 constexpr weechess::Color k_orientation = weechess::Color::White;
 

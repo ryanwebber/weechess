@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.6)
-project(Weechess VERSION 0.1.0)
+project(weechess VERSION 0.1.0)
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
@@ -105,22 +105,42 @@ if (LIB_LOGGING_ENABLED)
 endif()
 
 #
-# CLI
+# Entrypoint
 #
 
-set(CLI_TARGET weechess-cli)
-set(CLI_SOURCES
-        src/application/app_controller.cpp
-        src/board_printer.cpp
-        src/console.cpp
-        src/log.cpp
+SET(ENTRYPOINT_TARGET weechess-entrypoint)
+SET(ENTRYPOINT_SOURCES
         src/main.cpp
-        src/string_utils.cpp
         )
 
-add_executable(${CLI_TARGET} ${CLI_SOURCES})
+add_executable(${ENTRYPOINT_TARGET} ${ENTRYPOINT_SOURCES})
 
-target_link_libraries(${CLI_TARGET}
+target_include_directories(${ENTRYPOINT_TARGET}
+        PRIVATE
+            "include"
+        )
+
+set_target_properties(${ENTRYPOINT_TARGET} PROPERTIES
+        OUTPUT_NAME ${PROJECT_NAME}
+        )
+
+#
+# Play
+#
+
+set(CMD_PLAY_TARGET weechess-play)
+set(CMD_PLAY_SOURCES
+        src/play/app_controller.cpp
+        src/play/board_printer.cpp
+        src/play/console.cpp
+        src/play/log.cpp
+        src/play/main.cpp
+        src/play/string_utils.cpp
+        )
+
+add_executable(${CMD_PLAY_TARGET} ${CMD_PLAY_SOURCES})
+
+target_link_libraries(${CMD_PLAY_TARGET}
         PRIVATE
             ${LIB_TARGET}
             ftxui::screen
@@ -129,14 +149,34 @@ target_link_libraries(${CLI_TARGET}
             spdlog::spdlog
             )
 
-target_include_directories(${CLI_TARGET}
+target_include_directories(${CMD_PLAY_TARGET}
         PRIVATE
             "include"
         )
 
-target_compile_definitions(${CLI_TARGET}
+#
+# UCI
+#
+
+SET(CMD_UCI_TARGET weechess-uci)
+SET(CMD_UCI_SOURCES
+        src/uci/main.cpp
+        )
+
+add_executable(${CMD_UCI_TARGET} ${CMD_UCI_SOURCES})
+
+target_link_libraries(${CMD_UCI_TARGET}
         PRIVATE
-            WEECHESS_LOG_FILE="weechess-cli.log"
+            ${LIB_TARGET}
+            ftxui::screen
+            ftxui::dom
+            ftxui::component
+            spdlog::spdlog
+            )
+
+target_include_directories(${CMD_UCI_TARGET}
+        PRIVATE
+            "include"
         )
 
 #
@@ -171,4 +211,10 @@ target_link_libraries(${TEST_TARGET}
 catch_discover_tests(${TEST_TARGET})
 
 cmake_policy(SET CMP0110 NEW)
-add_test(NAME "CLI Sanity Check" COMMAND ${CLI_TARGET} --help)
+add_test(NAME "CLI Sanity Check" COMMAND ${CMD_PLAY_TARGET} --help)
+
+add_compile_definitions(
+    PRIVATE
+        WEECHESS_LOG_FILE="weechess.log"
+        WEECHESS_PROJECT_VERSION="${PROJECT_VERSION}"   
+)

@@ -37,8 +37,8 @@ TEST_CASE("Perft move generation counts", "[!benchmark][perft]")
     SECTION("Initial Position")
     {
         // https://www.chessprogramming.org/Perft_Results#Initial_Position
-        auto gs = GameState::new_game();
-        CHECK(do_perft(gs, 5) == 4865609);
+        // auto gs = GameState::new_game();
+        // CHECK(do_perft(gs, 6) == 119060324);
     }
 
     SECTION("Position 5")

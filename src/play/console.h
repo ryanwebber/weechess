@@ -5,10 +5,9 @@
 #include <string_view>
 #include <vector>
 
+#include <argparse/argparse.h>
 #include <weechess/game_state.h>
 #include <weechess/move.h>
-
-#include "argparse.h"
 
 class Console {
 public:

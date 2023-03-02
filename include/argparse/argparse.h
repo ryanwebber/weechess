@@ -1101,6 +1101,8 @@ public:
 
   ~ArgumentParser() = default;
 
+  std::string_view name() const { return m_program_name; }
+
   ArgumentParser &operator=(const ArgumentParser &other) {
     auto tmp = other;
     std::swap(*this, tmp);
@@ -1275,6 +1277,9 @@ public:
   /* Getter that returns true if a subcommand is used.
    */
   auto is_subcommand_used(std::string_view subcommand_name) const {
+    if (m_subparser_used.find(subcommand_name) == m_subparser_used.end()) {
+      return false;
+    }
     return m_subparser_used.at(subcommand_name);
   }
 

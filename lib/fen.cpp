@@ -6,7 +6,6 @@
 #include <weechess/piece.h>
 
 #include "fen.h"
-#include "log.h"
 
 namespace weechess::fen {
 constexpr const char* regex_string
@@ -119,7 +118,6 @@ std::optional<GameSnapshot> from_fen(std::string_view fen_sv)
     auto flags = std::regex_constants::match_default;
 
     if (!std::regex_match(fen_sv.begin(), fen_sv.end(), match, re, flags)) {
-        log::debug("Invalid FEN string: {}", fen_sv);
         return {};
     }
 
@@ -162,7 +160,6 @@ std::optional<Board> board_from_fen_fragment(std::string_view fragment)
             builder[corrected.offset] = piece.value();
             i++;
         } else {
-            log::debug("Unexpected character in FEN string fragment: {} ({})", c, fragment);
             return {};
         }
     }
@@ -203,7 +200,6 @@ std::optional<Location> location_from_fen_fragment(std::string_view fragment)
     char rank = fragment[1];
 
     if (file < 'a' || file > 'h' || rank < '1' || rank > '8') {
-        log::debug("Unexpected location in FEN string fragment: {}", fragment);
         return {};
     }
 
@@ -238,7 +234,6 @@ std::optional<Piece> piece_from_fen(char c)
     case black_king:
         return Piece(Piece::Type::King, Color::Black);
     default:
-        log::debug("Unexpected piece type in FEN string fragment: {}", c);
         return {};
     }
 }
