@@ -7,7 +7,7 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
-    message(FATAL_ERROR "Preventing an in-tree built.")
+    message(FATAL_ERROR "Preventing an in-tree build.")
 endif()
 
 if (CMAKE_CXX_BYTE_ORDER STREQUAL "BIG_ENDIAN")
@@ -25,7 +25,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-unused-function")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-unused-function -Wno-unused-but-set-variable")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -81,6 +81,8 @@ set(LIB_SOURCES
         lib/move_query.cpp
         lib/move.cpp
         lib/piece.cpp
+        lib/search_task.cpp
+        lib/threading.cpp
         )
 
 ADD_LIBRARY(${LIB_TARGET} ${LIB_SOURCES})

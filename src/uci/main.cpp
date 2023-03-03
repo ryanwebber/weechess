@@ -6,6 +6,8 @@
 
 #include <argparse/argparse.h>
 #include <weechess/game_state.h>
+#include <weechess/search_task.h>
+#include <weechess/threading.h>
 
 #include "main.h"
 
@@ -95,6 +97,7 @@ std::string consume(std::istream& is) { return std::string(std::istreambuf_itera
 struct UCI {
     bool in_debug_mode { false };
     weechess::GameState game_state { weechess::GameState::new_game() };
+    weechess::threading::ThreadDispatcher dispatcher;
 
     void loop(std::istream& in, std::ostream& out, std::ostream& err = std::cerr);
 };
@@ -167,6 +170,23 @@ const std::vector<UCICommand> commands = {
             }
 
             err << "Position set to: " << uci.game_state.to_fen() << std::endl;
+        } },
+    UCICommand { "go",
+        [](UCI& uci, std::istream& in, std::ostream& out, std::ostream& err) {
+            weechess::SearchLimits limits;
+            uci.dispatcher.dispatch([&err, limits](auto token) {
+                weechess::SearchTask(limits).execute([&](weechess::SearchResult result) {
+                    err << "[" << std::this_thread::get_id() << "] Ping" << std::this_thread::get_id() << std::endl;
+                    return !token->invalidated();
+                });
+
+                err << "[" << std::this_thread::get_id() << "] Search complete" << std::endl;
+            });
+        } },
+    UCICommand { "stop",
+        [](UCI& uci, std::istream& in, std::ostream& out, std::ostream& err) {
+            uci.dispatcher.invalidate_all();
+            uci.dispatcher.join_all();
         } },
 };
 
