@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.6)
 project(weechess VERSION 0.1.0)
 
+set(PROJECT_AUTHOR "Ryan Webber")
+
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 
@@ -216,5 +218,6 @@ add_test(NAME "CLI Sanity Check" COMMAND ${CMD_PLAY_TARGET} --help)
 add_compile_definitions(
     PRIVATE
         WEECHESS_LOG_FILE="weechess.log"
-        WEECHESS_PROJECT_VERSION="${PROJECT_VERSION}"   
+        WEECHESS_PROJECT_VERSION="${PROJECT_VERSION}"
+        WEECHESS_PROJECT_AUTHOR="${PROJECT_AUTHOR}"
 )

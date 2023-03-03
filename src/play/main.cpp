@@ -12,6 +12,7 @@
 #include "app_controller.h"
 #include "console.h"
 #include "log.h"
+#include "main.h"
 #include "string_utils.h"
 
 class AppDelegate : public AppController::Delegate,
@@ -109,8 +110,8 @@ public:
 
 int main(int argc, char* argv[])
 {
-    argparse::ArgumentParser parser("play", WEECHESS_PROJECT_VERSION, argparse::default_arguments::none);
-    parser.add_description("Play an interactive game in the terminal.");
+    argparse::ArgumentParser parser("weechess " PLAY_CMD_NAME, PLAY_CMD_VERSION, argparse::default_arguments::none);
+    parser.add_description(PLAY_CMD_DESCRIPTION);
     parser.add_argument("--help").default_value(false).implicit_value(true);
     parser.add_argument("--fen").metavar("FEN").help("The initial position of the board in FEN notation");
 
