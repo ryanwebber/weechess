@@ -74,6 +74,7 @@ set(LIB_SOURCES
         lib/attack_maps.cpp
         lib/bit_board.cpp
         lib/board.cpp
+        lib/evaluator.cpp
         lib/fen.cpp
         lib/game_state.cpp
         lib/location.cpp
@@ -165,6 +166,7 @@ target_include_directories(${CMD_PLAY_TARGET}
 
 SET(CMD_UCI_TARGET weechess-uci)
 SET(CMD_UCI_SOURCES
+        src/uci/log.cpp
         src/uci/main.cpp
         )
 
@@ -196,8 +198,9 @@ include(CTest)
 set(TEST_TARGET weechess-tests)
 set(TEST_SOURCES
         tests/main.cpp
-        tests/test_board.cpp
         tests/test_bit_board.cpp
+        tests/test_board.cpp
+        tests/test_evaluator.cpp
         tests/test_fen.cpp
         tests/test_game_state.cpp
         tests/test_move_generation.cpp

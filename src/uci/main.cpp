@@ -9,6 +9,7 @@
 #include <weechess/search_executor.h>
 #include <weechess/threading.h>
 
+#include "log.h"
 #include "main.h"
 
 namespace utils {
@@ -91,7 +92,10 @@ public:
 
     void on_performance_event(const weechess::PerformanceEvent& event) override
     {
-        m_out << "info nodes " << event.positions_searched << " depth " << event.depth << std::endl;
+        m_out << "info nodes " << event.nodes_searched;
+        m_out << " depth " << event.current_depth;
+        m_out << " nps " << event.nodes_per_second;
+        m_out << std::endl;
     }
 };
 
@@ -170,34 +174,34 @@ struct UCI {
     weechess::GameState game_state { weechess::GameState::new_game() };
     weechess::threading::ThreadDispatcher dispatcher;
 
-    void loop(std::istream& in, std::ostream& out, std::ostream& err = std::cerr);
+    void loop(std::istream& in, std::ostream& out);
 };
 
 struct UCICommand {
     std::string_view command;
-    std::function<void(UCI&, std::istream&, std::ostream&, std::ostream& err)> handler;
+    std::function<void(UCI&, std::istream&, std::ostream&)> handler;
 };
 
 const std::vector<UCICommand> commands = {
     UCICommand { "uci",
-        [](UCI&, std::istream&, std::ostream& out, std::ostream&) {
-            out << "id name weechess" << std::endl;
+        [](UCI&, std::istream&, std::ostream& out) {
+            out << "id name weechess " << WEECHESS_PROJECT_VERSION << std::endl;
             out << "id author " WEECHESS_PROJECT_AUTHOR << std::endl;
             out << std::endl;
             out << "uciok" << std::endl;
         } },
     UCICommand { "debug",
-        [](UCI& uci, std::istream& in, std::ostream& out, std::ostream&) {
+        [](UCI& uci, std::istream& in, std::ostream& out) {
             auto token = utils::pop_token(in);
             uci.in_debug_mode = token == "on";
         } },
     UCICommand { "isready",
-        [](UCI&, std::istream&, std::ostream& out, std::ostream&) {
+        [](UCI&, std::istream&, std::ostream& out) {
             out << "readyok" << std::endl;
             ;
         } },
     UCICommand { "position",
-        [](UCI& uci, std::istream& in, std::ostream& out, std::ostream& err) {
+        [](UCI& uci, std::istream& in, std::ostream& out) {
             auto first_token = utils::pop_token(in);
             if (first_token != "startpos") {
                 // Fen string
@@ -214,7 +218,8 @@ const std::vector<UCICommand> commands = {
                 if (auto new_gs = weechess::GameState::from_fen(fen)) {
                     uci.game_state = *new_gs;
                 } else {
-                    err << "Invalid fen string: " << fen << std::endl;
+                    log::error("Invalid fen string: {}", fen);
+                    return;
                 }
             } else {
                 // Startpos
@@ -233,18 +238,37 @@ const std::vector<UCICommand> commands = {
                     if (auto legal_move = uci.game_state.move_set().find_first(*move_query)) {
                         uci.game_state = weechess::GameState(legal_move->snapshot());
                     } else {
-                        err << "Illegal move: " << token << std::endl;
+                        log::error("Illegal move: {}", token);
                     }
                 } else {
-                    err << "Invalid move format: " << token << std::endl;
+                    log::error("Invalid move format: {}", token);
                 }
             }
 
-            err << "Position set to: " << uci.game_state.to_fen() << std::endl;
+            log::debug("Position set to: {}", uci.game_state.to_fen());
         } },
     UCICommand { "go",
-        [](UCI& uci, std::istream& in, std::ostream& out, std::ostream& err) {
+        [](UCI& uci, std::istream& in, std::ostream& out) {
             weechess::SearchParameters parameters;
+
+            {
+                std::string token;
+                while (in >> token) {
+                    if (token == "depth") {
+                        in >> parameters.max_depth.value();
+                    } else if (token == "nodes") {
+                        in >> parameters.max_nodes.value();
+                    } else if (token == "infinite") {
+                        parameters.max_search_time = {};
+                    } else if (token == "movetime") {
+                        size_t time;
+                        in >> time;
+                        if (time > 0) {
+                            parameters.max_search_time = std::chrono::milliseconds(time);
+                        }
+                    }
+                }
+            }
 
             uci.dispatcher.dispatch([&out, parameters, gs = uci.game_state](auto token) {
                 UCISearchDelegate delegate(out);
@@ -259,7 +283,7 @@ const std::vector<UCICommand> commands = {
             });
         } },
     UCICommand { "stop",
-        [](UCI& uci, std::istream& in, std::ostream& out, std::ostream& err) {
+        [](UCI& uci, std::istream& in, std::ostream& out) {
             uci.dispatcher.invalidate_all();
             uci.dispatcher.join_all();
         } },
@@ -271,7 +295,7 @@ const std::vector<std::string> ignored_commands = {
     "register",
 };
 
-void UCI::loop(std::istream& in, std::ostream& out, std::ostream& err)
+void UCI::loop(std::istream& in, std::ostream& out)
 {
     std::string line;
     std::string token;
@@ -287,7 +311,7 @@ void UCI::loop(std::istream& in, std::ostream& out, std::ostream& err)
             commands.begin(), commands.end(), [&](const UCICommand& cmd) { return cmd.command == token; });
 
         if (cmd != commands.end()) {
-            cmd->handler(*this, iss, out, err);
+            cmd->handler(*this, iss, out);
             continue;
         }
 
@@ -295,12 +319,13 @@ void UCI::loop(std::istream& in, std::ostream& out, std::ostream& err)
             continue;
         }
 
-        err << "Unsupported command: " << token << std::endl;
+        log::error("Unsupported command: {}", token);
     }
 }
 
 int main(int argc, char* argv[])
 {
+    log::init_logging();
     argparse::ArgumentParser parser("weechess " UCI_CMD_NAME, UCI_CMD_VERSION, argparse::default_arguments::none);
     parser.add_description(UCI_CMD_DESCRIPTION);
     parser.add_argument("--help").default_value(false).implicit_value(true);

@@ -12,20 +12,22 @@ struct SearchQuery {
     std::span<const LegalMove> moves {};
 };
 
-struct SearchProgress { };
+struct SearchProgress {
+    size_t current_depth { 0 };
+    size_t nodes_searched { 0 };
+};
 
-enum class SearchContinuation {
-    Continue,
-    Stop,
+struct SearchControl {
+    bool stop { false };
+    size_t next_control_event { 1 };
 };
 
 class SearchTask {
 public:
-    SearchTask() = default;
-    void execute(const SearchQuery&, std::function<SearchContinuation(const SearchProgress&)> checkpoint);
+    using Checkpointer = std::function<void(const SearchProgress&, SearchControl&)>;
 
-private:
-    SearchQuery m_query;
+    SearchTask() = default;
+    void execute(const SearchQuery&, const Checkpointer&);
 };
 
 }

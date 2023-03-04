@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bit>
 #include <bitset>
 #include <cassert>
 #include <iostream>
@@ -43,6 +44,8 @@ public:
     constexpr bool none() const { return m_data == 0; }
 
     constexpr Data data() const { return m_data; }
+
+    constexpr size_t count() const { return std::popcount(m_data); }
 
     constexpr std::optional<Location> msb() const
     {
