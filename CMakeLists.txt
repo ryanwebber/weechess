@@ -81,6 +81,7 @@ set(LIB_SOURCES
         lib/move_query.cpp
         lib/move.cpp
         lib/piece.cpp
+        lib/search_executor.cpp
         lib/search_task.cpp
         lib/threading.cpp
         )

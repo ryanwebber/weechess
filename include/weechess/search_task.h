@@ -1,18 +1,31 @@
+#pragma once
+
+#include <span>
+
+#include <weechess/color_map.h>
+#include <weechess/game_state.h>
 #include <weechess/threading.h>
 
 namespace weechess {
 
-struct SearchLimits { };
+struct SearchQuery {
+    std::span<const LegalMove> moves {};
+};
 
-struct SearchResult { };
+struct SearchProgress { };
+
+enum class SearchContinuation {
+    Continue,
+    Stop,
+};
 
 class SearchTask {
 public:
-    SearchTask(SearchLimits limits);
-    void execute(std::function<bool(SearchResult)> checkpoint);
+    SearchTask() = default;
+    void execute(const SearchQuery&, std::function<SearchContinuation(const SearchProgress&)> checkpoint);
 
 private:
-    SearchLimits m_limits;
+    SearchQuery m_query;
 };
 
 }

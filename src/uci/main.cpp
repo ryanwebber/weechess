@@ -6,12 +6,94 @@
 
 #include <argparse/argparse.h>
 #include <weechess/game_state.h>
-#include <weechess/search_task.h>
+#include <weechess/search_executor.h>
 #include <weechess/threading.h>
 
 #include "main.h"
 
-struct UCI;
+namespace utils {
+std::string pop_token(std::istream& is)
+{
+    std::string token;
+    is >> token;
+    return token;
+}
+
+std::string consume(std::istream& is) { return std::string(std::istreambuf_iterator<char>(is), {}); }
+}
+
+struct UCIMove {
+    weechess::Location from;
+    weechess::Location to;
+    weechess::Piece::Type promotion;
+
+    static UCIMove from_move(const weechess::Move& move)
+    {
+        UCIMove umove {
+            .from = move.start_location(),
+            .to = move.end_location(),
+            .promotion = weechess::Piece::Type::None,
+        };
+
+        if (move.is_promotion()) {
+            umove.promotion = move.promoted_piece_type();
+        }
+
+        return umove;
+    }
+};
+
+std::ostream& operator<<(std::ostream& os, const UCIMove& move)
+{
+    os << move.from << move.to;
+    switch (move.promotion) {
+    case weechess::Piece::Type::Queen:
+        os << 'q';
+        break;
+    case weechess::Piece::Type::Rook:
+        os << 'r';
+        break;
+    case weechess::Piece::Type::Bishop:
+        os << 'b';
+        break;
+    case weechess::Piece::Type::Knight:
+        os << 'n';
+        break;
+    default:
+        break;
+    }
+
+    return os;
+}
+
+class UCISearchDelegate : public weechess::SearchDelegate {
+private:
+    std::ostream& m_out;
+
+public:
+    UCISearchDelegate(std::ostream& out)
+        : m_out(out)
+    {
+    }
+
+    void on_best_move_changed(std::span<const weechess::Move> moves) override
+    {
+        if (moves.empty())
+            return;
+
+        m_out << "info pv";
+        for (const auto& move : moves) {
+            m_out << " " << UCIMove::from_move(move);
+        }
+
+        m_out << std::endl;
+    }
+
+    void on_performance_event(const weechess::PerformanceEvent& event) override
+    {
+        m_out << "info nodes " << event.positions_searched << " depth " << event.depth << std::endl;
+    }
+};
 
 class UCIMoveQuery : public weechess::MoveQuery {
 private:
@@ -82,17 +164,6 @@ public:
         return UCIMoveQuery(*from, *to, promotion);
     }
 };
-
-namespace utils {
-std::string pop_token(std::istream& is)
-{
-    std::string token;
-    is >> token;
-    return token;
-}
-
-std::string consume(std::istream& is) { return std::string(std::istreambuf_iterator<char>(is), {}); }
-}
 
 struct UCI {
     bool in_debug_mode { false };
@@ -173,14 +244,18 @@ const std::vector<UCICommand> commands = {
         } },
     UCICommand { "go",
         [](UCI& uci, std::istream& in, std::ostream& out, std::ostream& err) {
-            weechess::SearchLimits limits;
-            uci.dispatcher.dispatch([&err, limits](auto token) {
-                weechess::SearchTask(limits).execute([&](weechess::SearchResult result) {
-                    err << "[" << std::this_thread::get_id() << "] Ping" << std::this_thread::get_id() << std::endl;
-                    return !token->invalidated();
-                });
+            weechess::SearchParameters parameters;
 
-                err << "[" << std::this_thread::get_id() << "] Search complete" << std::endl;
+            uci.dispatcher.dispatch([&out, parameters, gs = uci.game_state](auto token) {
+                UCISearchDelegate delegate(out);
+                weechess::SearchExecutor executor(gs, parameters);
+                auto result = executor.execute(delegate, *token);
+
+                if (result.best_move) {
+                    out << "bestmove 0000" << std::endl;
+                } else {
+                    out << "bestmove 0000" << std::endl;
+                }
             });
         } },
     UCICommand { "stop",
