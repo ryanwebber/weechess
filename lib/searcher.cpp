@@ -41,9 +41,27 @@ private:
         const GameState& game_state, size_t depth, size_t max_depth, Evaluation alpha, Evaluation beta)
     {
         m_nodes_searched++;
-        if (auto entry = m_transposition_table.lookup(game_state.snapshot(), depth, max_depth, alpha, beta);
-            entry.has_value()) {
-            return entry->evaluation;
+
+        // First thing to do is check the transposition table to see if we've
+        // searched this position to a greater depth than we're about to search now
+        if (auto entry = m_transposition_table.find(game_state.snapshot()); entry.has_value()) {
+            auto current_depth_remaining = max_depth - depth;
+            auto tt_depth_remaining = entry->max_depth - entry->depth;
+            if (tt_depth_remaining >= current_depth_remaining) {
+                switch (entry->type) {
+                case TranspositionEntry::Type::Exact:
+                    return entry->evaluation;
+                case TranspositionEntry::Type::UpperBound:
+                    beta = std::min(beta, entry->evaluation);
+                    break;
+                case TranspositionEntry::Type::LowerBound:
+                    alpha = std::max(alpha, entry->evaluation);
+                    break;
+                }
+
+                if (alpha >= beta)
+                    return entry->evaluation;
+            }
         }
 
         if (depth >= max_depth) {
@@ -102,16 +120,14 @@ private:
             }
         }
 
-        if (best_move.has_value()) {
-            m_transposition_table.insert(game_state.snapshot(),
-                {
-                    .depth = depth,
-                    .max_depth = max_depth,
-                    .evaluation = alpha,
-                    .move = best_move.value(),
-                    .type = evaluation_type,
-                });
-        }
+        m_transposition_table.insert(game_state.snapshot(),
+            {
+                .depth = depth,
+                .max_depth = max_depth,
+                .evaluation = alpha,
+                .move = best_move.value_or(move_set.legal_moves().front().move()),
+                .type = evaluation_type,
+            });
 
         if (m_nodes_searched > m_next_control_event) {
             submit_progress(max_depth, false);

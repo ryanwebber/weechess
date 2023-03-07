@@ -33,8 +33,6 @@ public:
 
     void insert(const GameSnapshot&, const Value&);
     std::optional<Value> find(const GameSnapshot&) const;
-    std::optional<Value> lookup(
-        const GameSnapshot&, size_t depth, size_t max_depth, Evaluation alpha, Evaluation beta) const;
 
 private:
     std::unordered_map<Key, Value> m_table;
