@@ -12,7 +12,7 @@ void init_logging()
     lib_logger->set_level(spdlog::level::debug);
     spdlog::register_logger(lib_logger);
 
-    auto cli_logger = std::make_shared<spdlog::logger>("cli", shared_sink);
+    auto cli_logger = std::make_shared<spdlog::logger>("uci", shared_sink);
     cli_logger->set_level(spdlog::level::debug);
     spdlog::register_logger(cli_logger);
 }

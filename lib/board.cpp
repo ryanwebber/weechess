@@ -59,6 +59,8 @@ BitBoard Board::attacks(Color color) const
                 auto origin = occupancy.pop_lsb().value();
                 auto attacks = attack_maps::generate_attacks(piece, origin, m_shared_occupancy);
                 mut_this->m_color_attacks[color] |= attacks;
+                if (piece.type == Piece::Type::Pawn)
+                    mut_this->m_pawn_attacks[color] |= attacks;
             }
         }
 
@@ -66,6 +68,15 @@ BitBoard Board::attacks(Color color) const
     }
 
     return m_color_attacks[color];
+}
+
+BitBoard Board::pawn_attacks(Color color) const
+{
+    // Attacks are lazily initialized in attacks();
+    if (m_color_attacks[color].none())
+        attacks(color);
+
+    return m_pawn_attacks[color];
 }
 
 std::array<Piece, 64> Board::to_array() const

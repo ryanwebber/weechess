@@ -12,6 +12,7 @@
 #include <weechess/move.h>
 #include <weechess/move_query.h>
 #include <weechess/piece.h>
+#include <weechess/zobrist.h>
 
 namespace weechess {
 
@@ -49,6 +50,8 @@ struct GameSnapshot {
     std::string to_fen() const;
     static std::optional<GameSnapshot> from_fen(std::string_view);
 
+    zobrist::Hash zobrist_hash() const;
+
     static GameSnapshot initial_position();
 
 private:
@@ -60,10 +63,11 @@ private:
 
 class LegalMove {
 public:
+    LegalMove() = default;
+    LegalMove(Move, GameSnapshot);
+
     const Move& move() const;
     const GameSnapshot& snapshot() const;
-
-    LegalMove(Move, GameSnapshot);
 
     const Move& operator*() const;
     const Move* operator->() const;

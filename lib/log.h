@@ -3,6 +3,7 @@
 #include <iostream>
 
 #if WEECHESS_LOGGING_ENABLED
+#include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
 #endif
 

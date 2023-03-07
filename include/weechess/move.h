@@ -34,6 +34,8 @@ public:
     static Move by_castling(Piece, CastleSide);
     static Move by_en_passant(Piece, Location from, Location to);
 
+    static const Move null;
+
     Location start_location() const;
     Location end_location() const;
 
@@ -58,6 +60,7 @@ public:
     std::optional<CastleSide> castle_side() const;
 
     std::string san_notation(const GameState&) const;
+    std::string to_string() const;
 
     friend bool operator==(const Move&, const Move&);
     friend bool operator!=(const Move&, const Move&);

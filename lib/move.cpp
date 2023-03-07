@@ -5,6 +5,8 @@
 
 namespace weechess {
 
+const Move Move::null {};
+
 Move::Move(Data data)
     : m_data(data)
 {
@@ -142,6 +144,7 @@ Move Move::by_castling(Piece piece, CastleSide side)
 }
 
 std::string Move::san_notation(const GameState& gs) const { return gs.san_notation(*this); }
+std::string Move::to_string() const { return start_location().to_string() + end_location().to_string(); }
 
 std::size_t MoveHash::operator()(const Move& move) const { return std::hash<Move::Data> {}(move.m_data); }
 

@@ -24,6 +24,8 @@ GameSnapshot::GameSnapshot(Board board,
 {
 }
 
+zobrist::Hash GameSnapshot::zobrist_hash() const { return zobrist::Hasher::default_instance.hash(*this); }
+
 std::optional<GameSnapshot> GameSnapshot::by_performing_move(const Move& move) const
 {
     return GameSnapshot::by_performing_move(*this, move);
@@ -126,7 +128,13 @@ const std::optional<Location>& GameState::en_passant_target() const { return m_s
 size_t GameState::halfmove_clock() const { return m_snapshot.halfmove_clock; }
 size_t GameState::fullmove_number() const { return m_snapshot.fullmove_number; }
 
-bool GameState::is_check() const { return false; }
+bool GameState::is_check() const
+{
+    auto king_mask = board().occupancy_for(Piece(Piece::Type::King, turn_to_move()));
+    auto attack_mask = board().attacks(invert_color(turn_to_move()));
+    return (king_mask & attack_mask).any();
+}
+
 bool GameState::is_checkmate() const { return move_set().legal_moves().empty() && is_check(); }
 bool GameState::is_stalemate() const { return move_set().legal_moves().empty() && !is_check(); }
 

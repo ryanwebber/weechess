@@ -80,3 +80,15 @@ TEST_CASE("Board attack map")
 
     CHECK(board.attacks(Color::White) == BitBoard::from(expected_attacks));
 }
+
+TEST_CASE("Checkmate detection")
+{
+    auto game_state = weechess::GameState::from_fen("7k/6Q1/8/8/8/8/8/5KRq b - - 0 1").value();
+    CHECK(game_state.is_checkmate());
+}
+
+TEST_CASE("Stalemate detection")
+{
+    auto game_state = weechess::GameState::from_fen("7k/Q7/8/8/8/8/8/5KR1 b - - 0 1").value();
+    CHECK(game_state.is_stalemate());
+}

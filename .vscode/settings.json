@@ -87,6 +87,7 @@
         "ranges": "cpp",
         "filesystem": "cpp",
         "__memory": "cpp",
-        "__availability": "cpp"
+        "__availability": "cpp",
+        "functional": "cpp"
     }
 }

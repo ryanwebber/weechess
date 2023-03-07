@@ -12,6 +12,14 @@
 #include "log.h"
 #include "main.h"
 
+template <typename T> std::istream& operator>>(std::istream& is, std::optional<T>& opt)
+{
+    T t;
+    is >> t;
+    opt = std::move(t);
+    return is;
+}
+
 namespace utils {
 std::string pop_token(std::istream& is)
 {
@@ -77,14 +85,12 @@ public:
     {
     }
 
-    void on_best_move_changed(std::span<const weechess::Move> moves) override
+    void on_evaluation_event(const weechess::EvaluationEvent& event) override
     {
-        if (moves.empty())
-            return;
-
-        m_out << "info pv";
-        for (const auto& move : moves) {
-            m_out << " " << UCIMove::from_move(move);
+        m_out << "info score cp " << event.evaluation.score;
+        m_out << " pv";
+        for (const auto& move : event.best_line) {
+            m_out << ' ' << UCIMove::from_move(move);
         }
 
         m_out << std::endl;
@@ -95,6 +101,7 @@ public:
         m_out << "info nodes " << event.nodes_searched;
         m_out << " depth " << event.current_depth;
         m_out << " nps " << event.nodes_per_second;
+        m_out << " time " << event.elapsed_time.count();
         m_out << std::endl;
     }
 };
@@ -255,9 +262,9 @@ const std::vector<UCICommand> commands = {
                 std::string token;
                 while (in >> token) {
                     if (token == "depth") {
-                        in >> parameters.max_depth.value();
+                        in >> parameters.max_depth;
                     } else if (token == "nodes") {
-                        in >> parameters.max_nodes.value();
+                        in >> parameters.max_nodes;
                     } else if (token == "infinite") {
                         parameters.max_search_time = {};
                     } else if (token == "movetime") {
@@ -275,8 +282,8 @@ const std::vector<UCICommand> commands = {
                 weechess::SearchExecutor executor(gs, parameters);
                 auto result = executor.execute(delegate, *token);
 
-                if (result.best_move) {
-                    out << "bestmove 0000" << std::endl;
+                if (result.best_line.size() > 0) {
+                    out << "bestmove " << UCIMove::from_move(result.best_line[0]) << std::endl;
                 } else {
                     out << "bestmove 0000" << std::endl;
                 }
@@ -304,6 +311,8 @@ void UCI::loop(std::istream& in, std::ostream& out)
         iss >> token;
 
         if (token == "quit") {
+            dispatcher.invalidate_all();
+            dispatcher.join_all();
             break;
         }
 

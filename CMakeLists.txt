@@ -80,11 +80,14 @@ set(LIB_SOURCES
         lib/location.cpp
         lib/move_generator.cpp
         lib/move_query.cpp
+        lib/move_sorter.cpp
         lib/move.cpp
         lib/piece.cpp
         lib/search_executor.cpp
-        lib/search_task.cpp
+        lib/searcher.cpp
         lib/threading.cpp
+        lib/transposition_table.cpp
+        lib/zobrist.cpp
         )
 
 ADD_LIBRARY(${LIB_TARGET} ${LIB_SOURCES})
@@ -205,6 +208,7 @@ set(TEST_SOURCES
         tests/test_game_state.cpp
         tests/test_move_generation.cpp
         tests/test_move.cpp
+        tests/test_searching.cpp
         )
 
 add_executable(${TEST_TARGET} ${TEST_SOURCES})

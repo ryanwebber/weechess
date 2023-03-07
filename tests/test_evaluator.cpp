@@ -11,5 +11,5 @@ TEST_CASE("Game state evaluation")
     using namespace weechess;
     auto game_state = GameState::from_fen("2kq3n/7p/7p/7p/8/8/8/2K5 b - - 0 8").value();
     auto evaluation = Evaluator::default_instance.evaluate(game_state);
-    CHECK(evaluation.relative_score == -150);
+    CHECK(evaluation.score == Evaluation::pawns(15));
 }

@@ -4,7 +4,7 @@
 
 namespace log {
 
-constexpr const char* subsystem = "cli";
+constexpr const char* subsystem = "uci";
 
 void init_logging();
 
