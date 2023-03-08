@@ -12,6 +12,8 @@ Move::Move(Data data)
 {
 }
 
+Move::Data Move::data() const { return m_data; }
+
 Piece Move::moving_piece() const
 {
     auto piece_type = static_cast<Piece::Type>(get_flags(Flags::PieceType));

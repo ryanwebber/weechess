@@ -74,6 +74,7 @@ set(LIB_SOURCES
         lib/attack_maps.cpp
         lib/bit_board.cpp
         lib/board.cpp
+        lib/engine.cpp
         lib/evaluator.cpp
         lib/fen.cpp
         lib/game_state.cpp
@@ -83,7 +84,6 @@ set(LIB_SOURCES
         lib/move_sorter.cpp
         lib/move.cpp
         lib/piece.cpp
-        lib/search_executor.cpp
         lib/searcher.cpp
         lib/threading.cpp
         lib/transposition_table.cpp
@@ -112,6 +112,25 @@ if (LIB_LOGGING_ENABLED)
                 spdlog::spdlog
             )
 endif()
+
+#
+# Tools
+#
+
+set(TOOL_BOOKC_TARGET bookc)
+add_executable(${TOOL_BOOKC_TARGET}
+        tools/bookc/main.cpp
+        )
+
+target_include_directories(${TOOL_BOOKC_TARGET}
+        PRIVATE
+            "include"
+        )
+
+target_link_libraries(${TOOL_BOOKC_TARGET}
+        PRIVATE
+            ${LIB_TARGET}
+            )
 
 #
 # Entrypoint
@@ -207,6 +226,7 @@ set(TEST_SOURCES
         tests/test_fen.cpp
         tests/test_game_state.cpp
         tests/test_move_generation.cpp
+        tests/test_move_query.cpp
         tests/test_move.cpp
         tests/test_searching.cpp
         )

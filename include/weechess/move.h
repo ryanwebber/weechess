@@ -36,6 +36,8 @@ public:
 
     static const Move null;
 
+    Data data() const;
+
     Location start_location() const;
     Location end_location() const;
 

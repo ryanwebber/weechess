@@ -5,8 +5,8 @@
 #include <vector>
 
 #include <argparse/argparse.h>
+#include <weechess/engine.h>
 #include <weechess/game_state.h>
-#include <weechess/search_executor.h>
 #include <weechess/threading.h>
 
 #include "log.h"
@@ -179,7 +179,7 @@ public:
 struct UCI {
     bool in_debug_mode { false };
     weechess::GameState game_state { weechess::GameState::new_game() };
-    weechess::threading::ThreadDispatcher dispatcher;
+    weechess::threading::ThreadDispatcher dispatcher {};
 
     void loop(std::istream& in, std::ostream& out);
 };
@@ -279,8 +279,8 @@ const std::vector<UCICommand> commands = {
 
             uci.dispatcher.dispatch([&out, parameters, gs = uci.game_state](auto token) {
                 UCISearchDelegate delegate(out);
-                weechess::SearchExecutor executor(gs, parameters);
-                auto result = executor.execute(delegate, *token);
+                weechess::Engine engine;
+                auto result = engine.calculate(gs, parameters, *token, delegate);
 
                 if (result.best_line.size() > 0) {
                     out << "bestmove " << UCIMove::from_move(result.best_line[0]) << std::endl;

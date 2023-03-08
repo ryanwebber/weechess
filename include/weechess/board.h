@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <iostream>
 #include <optional>
 #include <span>
 #include <string>
@@ -61,6 +62,21 @@ struct File {
 
     constexpr BitBoard mask() const { return file_masks[index]; }
 };
+
+constexpr bool operator==(const Rank& lhs, const Rank& rhs) { return lhs.index == rhs.index; }
+constexpr bool operator!=(const Rank& lhs, const Rank& rhs) { return !(lhs == rhs); }
+constexpr bool operator==(const File& lhs, const File& rhs) { return lhs.index == rhs.index; }
+constexpr bool operator!=(const File& lhs, const File& rhs) { return !(lhs == rhs); }
+
+constexpr std::ostream& operator<<(std::ostream& stream, const Rank& rank)
+{
+    return stream << "Rank(" << static_cast<int>(rank.index + 1) << ")";
+}
+
+constexpr std::ostream& operator<<(std::ostream& stream, const File& file)
+{
+    return stream << "File(" << static_cast<char>('A' + (7 - file.index)) << ")";
+}
 
 class Board {
 public:

@@ -13,7 +13,7 @@ std::optional<Location> Location::from_string(std::string_view name)
         return std::nullopt;
     }
 
-    uint8_t file = name[0] - 'a';
+    uint8_t file = std::tolower(name[0]) - 'a';
     uint8_t rank = name[1] - '1';
 
     if (file > 7 || rank > 7) {

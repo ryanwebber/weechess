@@ -4,7 +4,7 @@
 namespace weechess::zobrist {
 namespace {
 
-    constexpr Hash seed = 0;
+    constexpr Hash seed = 0x2bbbf637171e801cULL;
     constexpr Hash lce_a = 6364136223846793005ULL;
     constexpr Hash lce_c = 1442695040888963407ULL;
     constexpr Hash lce_m = 18446744073709551615ULL;

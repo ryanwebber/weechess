@@ -62,7 +62,7 @@ MoveSet::MoveSet(std::vector<LegalMove> legal_moves)
 std::span<const LegalMove> MoveSet::legal_moves() const { return m_legal_moves; };
 std::vector<LegalMove> MoveSet::legal_moves_from(Location from) const
 {
-    LocationMoveQuery query(from);
+    auto query = LocationMoveQuery::from(from);
     return find(query);
 }
 

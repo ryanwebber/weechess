@@ -17,8 +17,8 @@ struct PerformanceEvent {
 };
 
 struct EvaluationEvent {
-    std::vector<Move> best_line;
     Evaluation evaluation;
+    std::vector<Move> best_line;
 };
 
 class SearchDelegate {
@@ -41,21 +41,23 @@ struct SearchResult {
     std::vector<Move> best_line;
 };
 
-class SearchExecutor {
+class Engine {
+    struct Settings {
+        std::chrono::duration<size_t, std::milli> perf_event_interval { 500 };
+    };
+
 public:
-    SearchExecutor(GameState, SearchParameters);
-    SearchResult execute(SearchDelegate&, const threading::Token&);
+    Engine();
+    Engine(const Settings&);
 
-    std::chrono::duration<size_t, std::milli> perf_event_interval() const { return m_perfEventInterval; }
-    void set_perf_event_interval(std::chrono::duration<size_t, std::milli> interval) { m_perfEventInterval = interval; }
+    Settings& settings() { return m_settings; }
+    const Settings& settings() const { return m_settings; }
 
-    static SearchResult search(const GameState&, size_t depth);
+    SearchResult calculate(const GameState&, const SearchParameters&, const threading::Token&, SearchDelegate&) const;
+    static SearchResult calculate(const GameState&, size_t depth);
 
 private:
-    GameState m_game_state;
-    SearchParameters m_parameters;
-
-    std::chrono::duration<size_t, std::milli> m_perfEventInterval { 500 };
+    Settings m_settings;
 };
 
 }
