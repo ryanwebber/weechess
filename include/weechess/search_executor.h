@@ -49,6 +49,8 @@ public:
     std::chrono::duration<size_t, std::milli> perf_event_interval() const { return m_perfEventInterval; }
     void set_perf_event_interval(std::chrono::duration<size_t, std::milli> interval) { m_perfEventInterval = interval; }
 
+    static SearchResult search(const GameState&, size_t depth);
+
 private:
     GameState m_game_state;
     SearchParameters m_parameters;

@@ -66,4 +66,18 @@ SearchResult SearchExecutor::execute(SearchDelegate& delagate, const threading::
     return result;
 }
 
+class DummyDelegate : public SearchDelegate { };
+SearchResult SearchExecutor::search(const GameState& gameState, size_t depth)
+{
+    SearchParameters params;
+    params.max_depth = depth;
+    params.max_nodes = {};
+    params.max_search_time = {};
+
+    SearchExecutor executor(gameState, params);
+    DummyDelegate delegate;
+    threading::Token token;
+    return executor.execute(delegate, token);
+}
+
 }

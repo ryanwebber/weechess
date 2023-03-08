@@ -19,6 +19,8 @@ public:
     bool invalidate();
     bool invalidated() const;
 
+    bool reset();
+
 private:
     std::atomic<bool> m_invalidated;
 };

@@ -10,4 +10,6 @@ Token::Token()
 bool Token::invalidate() { return m_invalidated.exchange(true); }
 bool Token::invalidated() const { return m_invalidated.load(); }
 
+bool Token::reset() { return m_invalidated.exchange(false); }
+
 }

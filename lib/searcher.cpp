@@ -37,6 +37,49 @@ private:
         m_next_control_event = control.next_control_event;
     }
 
+    /*
+    Performs a recursive search by only looking at captures. Once the position is 'quiet'
+    then we evaluate it and return the evaluation.
+    */
+    inline Evaluation quiescence_search(const GameState& game_state, Evaluation alpha, Evaluation beta)
+    {
+        auto legal_moves = game_state.move_set().legal_moves();
+
+        if (legal_moves.empty()) {
+            // Don't bother searching further, the game is either in a
+            // checkmate or stalemate
+            return Evaluator::default_instance.evaluate(game_state);
+        }
+
+        auto is_quiet = std::all_of(legal_moves.begin(), legal_moves.end(), [](const auto& legal_move) {
+            return !legal_move.move().is_capture();
+        });
+
+        auto normal_eval = Evaluator::default_instance.evaluate(game_state);
+        if (is_quiet)
+            return normal_eval;
+        if (normal_eval >= beta)
+            return beta;
+        if (alpha < normal_eval)
+            alpha = normal_eval;
+
+        for (const auto& legal_move : legal_moves) {
+            if (!legal_move.move().is_capture())
+                continue;
+
+            auto new_game_state = GameState(legal_move.snapshot());
+            auto evaluation = -quiescence_search(new_game_state, -beta, -alpha);
+
+            if (evaluation >= beta)
+                return beta;
+
+            if (evaluation > alpha)
+                alpha = evaluation;
+        }
+
+        return alpha;
+    }
+
     inline Evaluation search(
         const GameState& game_state, size_t depth, size_t max_depth, Evaluation alpha, Evaluation beta)
     {
@@ -65,8 +108,11 @@ private:
         }
 
         if (depth >= max_depth) {
-            // TODO: Perform quiescence search
-            return Evaluator::default_instance.evaluate(game_state);
+            // We've reached the max depth but stopping here could be dangerous. For example,
+            // if we just captured a pawn with our queen, it could look like we're up a pawn
+            // here. In reality, we're probably about to lose our queen for that pawn, so
+            // we need to exaust all captures in the current position before we evaluate it
+            return quiescence_search(game_state, alpha, beta);
         }
 
         const auto& move_set = game_state.move_set();
