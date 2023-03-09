@@ -1,5 +1,8 @@
 # Weechess
 
+![CMake](https://github.com/ryanwebber/weechess/actions/workflows/cmake.yml/badge.svg)
+
+
 A wee-litle chess engine library and application.
 
 ## Getting Started
