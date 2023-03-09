@@ -125,13 +125,13 @@ private:
         auto evaluation_type = TranspositionEntry::Type::UpperBound;
         std::optional<Move> best_move {};
 
-        std::array<LegalMove, 256> legal_moves;
-        assert(move_set.legal_moves().size() <= legal_moves.size());
+        std::vector<LegalMove> legal_moves;
+        legal_moves.reserve(move_set.legal_moves().size());
 
         // Sort the legal moves by a rough evaluation of move quality. This
         // improves Alpha-Beta pruning performance significantly since we're
         // likely to find good moves first, and thus prune more of the search
-        std::copy(move_set.legal_moves().begin(), move_set.legal_moves().end(), legal_moves.begin());
+        std::copy(move_set.legal_moves().begin(), move_set.legal_moves().end(), std::back_inserter(legal_moves));
         std::sort(legal_moves.begin(),
             std::next(legal_moves.begin(), move_set.legal_moves().size()),
             MoveSorter::default_instance);
