@@ -45,7 +45,8 @@ bool PGNMoveQuery::test(const Move& move) const
         return false;
     }
 
-    if (m_origin_rank.has_value() && move.start_location().rank() != (m_origin_rank->index - 1)) {
+    if (m_origin_rank.has_value() && move.start_location().rank() != m_origin_rank->index) {
+        // log::debug("Rank mismatch: {} != {}", move.start_location().rank(), m_origin_rank->index);
         return false;
     }
 

@@ -25,7 +25,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-unused-function -Wno-unused-but-set-variable")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-unused-function -Wno-unused-but-set-variable -Wno-deprecated-declarations")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -40,7 +40,7 @@ FetchContent_MakeAvailable(Catch2)
 
 FetchContent_Declare(ftxui
     GIT_REPOSITORY  https://github.com/ArthurSonzogni/ftxui
-    GIT_TAG         v3.0.0
+    GIT_TAG         v4.0.0
     GIT_PROGRESS    TRUE
 )
 
@@ -71,9 +71,11 @@ set(LIB_LOGGING_ENABLED ON)
 
 set(LIB_TARGET weechess)
 set(LIB_SOURCES
+        lib/generated/book_data.cpp
         lib/attack_maps.cpp
         lib/bit_board.cpp
         lib/board.cpp
+        lib/book.cpp
         lib/engine.cpp
         lib/evaluator.cpp
         lib/fen.cpp
@@ -117,7 +119,7 @@ endif()
 # Tools
 #
 
-set(TOOL_BOOKC_TARGET bookc)
+set(TOOL_BOOKC_TARGET weechess-bookc)
 add_executable(${TOOL_BOOKC_TARGET}
         tools/bookc/main.cpp
         )

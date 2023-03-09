@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <weechess/board.h>
+#include <weechess/game_state.h>
 #include <weechess/move_query.h>
 
 TEST_CASE("PGN move parsing")
@@ -71,8 +72,13 @@ TEST_CASE("PGN move parsing")
 
     SECTION("Rank disambiguation")
     {
-        auto query = PGNMoveQuery::from("R1a3").value();
-        CHECK(query.origin_rank() == Rank(1));
+        auto query = PGNMoveQuery::from("N5c3").value();
+        CHECK(query.origin_rank() == Rank(5));
+
+        auto game_state
+            = GameState::from_fen("r1bqkb1r/pp3ppp/2nppn2/1N6/2P1P3/8/PP3PPP/RNBQKB1R w KQkq - 1 7").value();
+        auto possible_moves = game_state.move_set().find(query);
+        CHECK(possible_moves.size() == 1);
     }
 
     SECTION("File disambiguation")

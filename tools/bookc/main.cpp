@@ -11,7 +11,7 @@
 
 using namespace weechess;
 
-constexpr size_t max_opening_moves = 10;
+constexpr size_t max_opening_moves = 16;
 
 struct MoveEntry {
     std::string string;
@@ -136,24 +136,38 @@ int main(int argc, const char* argv[])
         }
     }
 
-    std::cout << "#include <unordered_map>" << std::endl;
+    std::cout << "#include <utility>" << std::endl;
     std::cout << "#include <vector>" << std::endl;
     std::cout << std::endl;
+    std::cout << "#include <weechess/book.h>" << std::endl;
+    std::cout << "#include <weechess/move.h>" << std::endl;
+    std::cout << "#include <weechess/zobrist.h>" << std::endl;
+    std::cout << std::endl;
+    std::cout << "#include \"book_data.h\"" << std::endl;
+    std::cout << std::endl;
 
-    std::cout << "namespace weechess {" << std::endl;
-    std::cout << "const std::unordered_map<uint_least64_t, std::vector<uint32_t>> book = {" << std::endl;
+    std::cout << "namespace weechess::generated {" << std::endl;
+    std::cout << "namespace {" << std::endl;
+    std::cout << "    Book::Table initialize_table()" << std::endl;
+    std::cout << "    {" << std::endl;
+    std::cout << "        Book::Table table;" << std::endl;
+    std::cout << "        table.reserve(" << book.size() << ");" << std::endl;
+    std::cout << std::endl;
 
     for (const auto& [key, value] : book) {
-        std::cout << "    {" << std::endl;
-        std::cout << "        " << key << "," << std::endl;
-        std::cout << "        {" << std::endl;
+        std::cout << "        table[" << key << "ULL] = {" << std::endl;
         for (const auto& move : value) {
-            std::cout << "            " << move.data().to_ulong() << "," << std::endl;
+            std::cout << "            Move(Move::Data(" << move.data().to_ulong() << "UL))," << std::endl;
         }
-        std::cout << "        }," << std::endl;
-        std::cout << "    }," << std::endl;
+        std::cout << "        };" << std::endl;
     }
 
-    std::cout << "};" << std::endl;
+    std::cout << std::endl;
+    std::cout << "        return table;" << std::endl;
+    std::cout << "    }" << std::endl;
+    std::cout << "}" << std::endl;
+
+    std::cout << "const Book::Table book_data = initialize_table();" << std::endl;
+
     std::cout << "}" << std::endl;
 }
