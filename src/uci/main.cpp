@@ -281,6 +281,10 @@ const std::vector<UCICommand> commands = {
                 weechess::Engine engine;
                 auto result = engine.calculate(gs, parameters, *token, delegate);
 
+                if (result.is_book_move) {
+                    out << "info string Using book move" << std::endl;
+                }
+
                 if (result.best_line.size() > 0) {
                     out << "bestmove " << UCIMove::from_move(result.best_line[0]) << std::endl;
                 } else {

@@ -1,3 +1,4 @@
+#include <weechess/book.h>
 #include <weechess/engine.h>
 #include <weechess/searcher.h>
 
@@ -12,14 +13,25 @@ Engine::Engine()
 
 Engine::Engine(const Settings& settings)
     : m_settings(settings)
+    , m_random_engine(settings.random_seed)
 {
 }
 
 SearchResult Engine::calculate(const GameState& game_state,
     const SearchParameters& parameters,
     const threading::Token& token,
-    SearchDelegate& delegate) const
+    SearchDelegate& delegate)
 {
+    // First, check if we have a book move
+    auto book_moves = Book::default_instance.lookup(game_state.snapshot());
+    if (!book_moves.empty()) {
+        auto book_move = book_moves[m_random_engine() % book_moves.size()];
+        return SearchResult {
+            .evaluation = Evaluation::zero(),
+            .best_line = { book_move },
+            .is_book_move = true,
+        };
+    }
 
     // Some large number, doesn't really matter because we can never
     // reach it. If we do then good for us - we've beaten chess :)

@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <optional>
+#include <random>
 
 #include <weechess/evaluator.h>
 #include <weechess/searcher.h>
@@ -39,10 +40,12 @@ struct SearchParameters {
 struct SearchResult {
     Evaluation evaluation;
     std::vector<Move> best_line;
+    bool is_book_move { false };
 };
 
 class Engine {
     struct Settings {
+        unsigned int random_seed { std::random_device()() };
         std::chrono::duration<size_t, std::milli> perf_event_interval { 500 };
     };
 
@@ -53,11 +56,12 @@ public:
     Settings& settings() { return m_settings; }
     const Settings& settings() const { return m_settings; }
 
-    SearchResult calculate(const GameState&, const SearchParameters&, const threading::Token&, SearchDelegate&) const;
+    SearchResult calculate(const GameState&, const SearchParameters&, const threading::Token&, SearchDelegate&);
     static SearchResult calculate(const GameState&, size_t depth);
 
 private:
     Settings m_settings;
+    std::default_random_engine m_random_engine;
 };
 
 }
