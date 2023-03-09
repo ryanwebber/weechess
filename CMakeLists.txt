@@ -71,7 +71,6 @@ set(LIB_LOGGING_ENABLED ON)
 
 set(LIB_TARGET weechess)
 set(LIB_SOURCES
-        lib/generated/book_data.cpp
         lib/attack_maps.cpp
         lib/bit_board.cpp
         lib/board.cpp
@@ -90,6 +89,7 @@ set(LIB_SOURCES
         lib/threading.cpp
         lib/transposition_table.cpp
         lib/zobrist.cpp
+        lib/generated/book_data.cpp
         )
 
 ADD_LIBRARY(${LIB_TARGET} ${LIB_SOURCES})
@@ -224,6 +224,7 @@ set(TEST_SOURCES
         tests/main.cpp
         tests/test_bit_board.cpp
         tests/test_board.cpp
+        tests/test_book.cpp
         tests/test_evaluator.cpp
         tests/test_fen.cpp
         tests/test_game_state.cpp

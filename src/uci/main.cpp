@@ -194,7 +194,6 @@ const std::vector<UCICommand> commands = {
         [](UCI&, std::istream&, std::ostream& out) {
             out << "id name weechess " << WEECHESS_PROJECT_VERSION << std::endl;
             out << "id author " WEECHESS_PROJECT_AUTHOR << std::endl;
-            out << std::endl;
             out << "uciok" << std::endl;
         } },
     UCICommand { "debug",
@@ -351,6 +350,8 @@ int main(int argc, char* argv[])
         std::cout << parser;
         std::exit(0);
     }
+
+    std::cerr << "weechess-" UCI_CMD_NAME " v" UCI_CMD_VERSION << " by Ryan Webber..." << std::endl;
 
     UCI().loop(std::cin, std::cout);
 }

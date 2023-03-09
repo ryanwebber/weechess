@@ -1,7 +1,8 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <unordered_map>
+#include <map>
+#include <set>
 
 #include <argparse/argparse.h>
 #include <weechess/game_state.h>
@@ -18,7 +19,11 @@ struct MoveEntry {
     PGNMoveQuery query;
 };
 
-void add_moves(const std::vector<MoveEntry>& entries, std::unordered_map<zobrist::Hash, std::vector<Move>>& dict)
+struct MoveCompare {
+    bool operator()(const Move& a, const Move& b) const { return a.data().to_ulong() < b.data().to_ulong(); }
+};
+
+void add_moves(const std::vector<MoveEntry>& entries, std::map<zobrist::Hash, std::set<Move, MoveCompare>>& dict)
 {
     auto game_state = GameState::new_game();
     for (auto i = 0; i < std::min(entries.size(), max_opening_moves); ++i) {
@@ -35,7 +40,7 @@ void add_moves(const std::vector<MoveEntry>& entries, std::unordered_map<zobrist
 
         auto move = possible_moves[0].move();
         auto hash = game_state.snapshot().zobrist_hash();
-        dict[hash].push_back(move);
+        dict[hash].insert(move);
 
         game_state = GameState(possible_moves[0].snapshot());
     }
@@ -51,11 +56,19 @@ std::vector<MoveEntry> parse_moves(std::string input)
     while (is.good()) {
         is >> token;
 
-        if (token.find('.') != std::string::npos) {
+        if (token.empty()) {
+            continue;
+        } else if (token.back() == '.') {
+            continue;
+        } else if (token.find('.') != std::string::npos) {
             token.erase(0, token.find('.') + 1);
         }
 
         move_strings.push_back(token);
+
+        if (token == "1/2-1/2" || token == "1-0" || token == "0-1") {
+            break;
+        }
     }
 
     if (move_strings.size() > 0) {
@@ -107,9 +120,10 @@ int main(int argc, const char* argv[])
         std::exit(0);
     }
 
-    std::unordered_map<zobrist::Hash, std::vector<Move>> book;
+    std::map<zobrist::Hash, std::set<Move, MoveCompare>> book;
 
     for (const auto& filename : input_files) {
+        std::cerr << "Processing file: " << filename << std::endl;
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cerr << "Could not open file: " << filename << std::endl;
@@ -136,38 +150,30 @@ int main(int argc, const char* argv[])
         }
     }
 
-    std::cout << "#include <utility>" << std::endl;
-    std::cout << "#include <vector>" << std::endl;
-    std::cout << std::endl;
-    std::cout << "#include <weechess/book.h>" << std::endl;
-    std::cout << "#include <weechess/move.h>" << std::endl;
-    std::cout << "#include <weechess/zobrist.h>" << std::endl;
-    std::cout << std::endl;
+    std::vector<Move> moves;
+
     std::cout << "#include \"book_data.h\"" << std::endl;
     std::cout << std::endl;
 
     std::cout << "namespace weechess::generated {" << std::endl;
-    std::cout << "namespace {" << std::endl;
-    std::cout << "    Book::Table initialize_table()" << std::endl;
-    std::cout << "    {" << std::endl;
-    std::cout << "        Book::Table table;" << std::endl;
-    std::cout << "        table.reserve(" << book.size() << ");" << std::endl;
-    std::cout << std::endl;
+    std::cout << "constexpr std::array<Book::Entry, " << book.size() << "> entries = { {" << std::endl;
 
+    size_t offset = 0;
     for (const auto& [key, value] : book) {
-        std::cout << "        table[" << key << "ULL] = {" << std::endl;
-        for (const auto& move : value) {
-            std::cout << "            Move(Move::Data(" << move.data().to_ulong() << "UL))," << std::endl;
-        }
-        std::cout << "        };" << std::endl;
+        std::cout << "    { " << key << "ULL, " << offset << ", " << value.size() << " }," << std::endl;
+        offset += value.size();
+        moves.insert(moves.end(), value.begin(), value.end());
     }
+    std::cout << "} };" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "constexpr std::array<Move, " << moves.size() << "> moves = {" << std::endl;
+    for (const auto& move : moves) {
+        std::cout << "    Move(Move::Data(" << move.data().to_ulong() << "UL))," << std::endl;
+    }
+    std::cout << "};" << std::endl;
 
     std::cout << std::endl;
-    std::cout << "        return table;" << std::endl;
-    std::cout << "    }" << std::endl;
-    std::cout << "}" << std::endl;
-
-    std::cout << "const Book::Table book_data = initialize_table();" << std::endl;
-
+    std::cout << "const Book::Data book_data = { entries, moves };" << std::endl;
     std::cout << "}" << std::endl;
 }

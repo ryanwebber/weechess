@@ -88,6 +88,7 @@
         "filesystem": "cpp",
         "__memory": "cpp",
         "__availability": "cpp",
-        "functional": "cpp"
+        "functional": "cpp",
+        "__verbose_abort": "cpp"
     }
 }

@@ -5,20 +5,26 @@
 namespace weechess {
 
 Book::Book() = default;
-Book::Book(Book::Table lookup_table)
-    : m_lookup_table(std::move(lookup_table))
+Book::Book(Book::Data data)
+    : m_data(data)
 {
 }
 
-std::span<const Move> Book::lookup(const GameSnapshot& snapshot) const
+std::span<const Move> Book::lookup(const GameSnapshot& snapshot) const { return lookup(snapshot.zobrist_hash()); }
+std::span<const Move> Book::lookup(const zobrist::Hash& hash) const
 {
-    if (auto it = m_lookup_table.find(snapshot.zobrist_hash()); it != m_lookup_table.end()) {
-        return it->second;
+    auto it
+        = std::lower_bound(m_data.entries.begin(), m_data.entries.end(), hash, [](const auto& entry, const auto& hash) {
+              return entry.hash < hash;
+          });
+
+    if (it != m_data.entries.end() && it->hash == hash) {
+        return { m_data.moves.begin() + it->offset, it->count };
     }
 
     return {};
 }
 
-const Book default_instance(generated::book_data);
+const Book Book::default_instance(generated::book_data);
 
 }

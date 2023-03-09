@@ -23,7 +23,10 @@ public:
     using Data = std::bitset<32>;
 
     Move() = default;
-    Move(Data data);
+    constexpr Move(Data data)
+        : m_data(data)
+    {
+    }
 
     Piece moving_piece() const;
     Piece resulting_piece() const;

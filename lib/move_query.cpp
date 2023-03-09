@@ -80,11 +80,12 @@ std::optional<PGNMoveQuery> PGNMoveQuery::from(std::string_view notation)
     }
 
     PGNMoveQuery query {};
-    if (notation == "O-O") {
-        query.m_castle_side = CastleSide::Kingside;
-        return query;
-    } else if (notation == "O-O-O") {
+
+    if (notation.starts_with("O-O-O")) {
         query.m_castle_side = CastleSide::Queenside;
+        return query;
+    } else if (notation.starts_with("O-O")) {
+        query.m_castle_side = CastleSide::Kingside;
         return query;
     }
 

@@ -7,11 +7,6 @@ namespace weechess {
 
 const Move Move::null {};
 
-Move::Move(Data data)
-    : m_data(data)
-{
-}
-
 Move::Data Move::data() const { return m_data; }
 
 Piece Move::moving_piece() const
