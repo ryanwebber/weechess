@@ -3,7 +3,7 @@
 
 #include "log.h"
 
-namespace log {
+namespace logger {
 void init_logging()
 {
     auto shared_sink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();

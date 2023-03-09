@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    log::init_logging();
+    logger::init_logging();
     auto screen = ftxui::ScreenInteractive::Fullscreen();
 
     AppController controller;

@@ -8,7 +8,7 @@ TEST_CASE("Searching position in a book", "[search]")
 
     // From the book data
     auto hash = 5575041534985550402ULL;
-    auto expected_move_count = 6;
+    size_t expected_move_count = 6;
 
     auto moves = Book::default_instance.lookup(hash);
     REQUIRE(moves.size() == expected_move_count);

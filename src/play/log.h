@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-namespace log {
+namespace logger {
 
 constexpr const char* subsystem = "cli";
 

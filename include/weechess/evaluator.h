@@ -51,7 +51,7 @@ public:
 
     // Evaluate the given game state
     Evaluation evaluate(const GameState&) const;
-    constexpr Evaluation operator()(const GameState& state) const { return evaluate(state); }
+    Evaluation operator()(const GameState& state) const { return evaluate(state); }
 
     static const Evaluator default_instance;
 };

@@ -137,7 +137,7 @@ void Console::execute(std::string_view command)
         return;
     }
 
-    log::debug("executing console command: {}", command);
+    logger::debug("executing console command: {}", command);
 
     auto tokens = tokenize(command);
     if (tokens.empty()) {

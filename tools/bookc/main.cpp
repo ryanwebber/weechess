@@ -26,7 +26,7 @@ struct MoveCompare {
 void add_moves(const std::vector<MoveEntry>& entries, std::map<zobrist::Hash, std::set<Move, MoveCompare>>& dict)
 {
     auto game_state = GameState::new_game();
-    for (auto i = 0; i < std::min(entries.size(), max_opening_moves); ++i) {
+    for (size_t i = 0; i < std::min(entries.size(), max_opening_moves); ++i) {
         const auto& entry = entries[i];
         auto possible_moves = game_state.move_set().find(entry.query);
         if (possible_moves.empty()) {

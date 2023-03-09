@@ -140,7 +140,7 @@ namespace {
         BitBoard(0x40102000a0a60140ULL),
     };
 
-    const std::array<int, 64> rook_magic_indexes = {
+    const std::array<unsigned int, 64> rook_magic_indexes = {
         // clang-format off
     12, 11, 11, 11, 11, 11, 11, 12,
     11, 10, 10, 10, 10, 10, 10, 11,
@@ -153,7 +153,7 @@ namespace {
         // clang-format on
     };
 
-    const std::array<int, 64> bishop_magic_indexes = {
+    const std::array<unsigned int, 64> bishop_magic_indexes = {
         // clang-format off
     6, 5, 5, 5, 5, 5, 5, 6,
     5, 5, 5, 5, 5, 5, 5, 5,
@@ -312,7 +312,7 @@ namespace {
         };
 
         std::array<BitBoard, 64> results {};
-        for (auto i = 0; i < results.size(); i++) {
+        for (auto i = 0; i < 64; i++) {
             Location location(i);
             for (const auto& jump : knight_jumps) {
                 auto [file_shift, rank_shift] = jump;
@@ -339,7 +339,7 @@ namespace {
         };
 
         std::array<BitBoard, 64> results {};
-        for (auto i = 0; i < results.size(); i++) {
+        for (auto i = 0; i < 64; i++) {
             Location location(i);
             for (const auto& jump : king_jumps) {
                 auto [file_shift, rank_shift] = jump;
@@ -394,7 +394,7 @@ namespace {
         auto rook_mask_table = compute_rook_slide_masks();
         for (auto i = 0; i < 64; i++) {
             Location l(i);
-            for (unsigned int b = 0; b < (1 << rook_magic_indexes[i]); b++) {
+            for (unsigned int b = 0; b < (1U << rook_magic_indexes[i]); b++) {
 
                 BitBoard blockers = compute_blockers_from_index(b, rook_mask_table[i]);
 
@@ -453,7 +453,7 @@ namespace {
         auto bishop_mask_table = compute_bishop_slide_masks();
         for (auto i = 0; i < 64; i++) {
             Location l(i);
-            for (unsigned int b = 0; b < (1 << bishop_magic_indexes[i]); b++) {
+            for (unsigned int b = 0; b < (1U << bishop_magic_indexes[i]); b++) {
 
                 BitBoard blockers = compute_blockers_from_index(b, bishop_mask_table[i]);
 

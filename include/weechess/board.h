@@ -68,12 +68,12 @@ constexpr bool operator!=(const Rank& lhs, const Rank& rhs) { return !(lhs == rh
 constexpr bool operator==(const File& lhs, const File& rhs) { return lhs.index == rhs.index; }
 constexpr bool operator!=(const File& lhs, const File& rhs) { return !(lhs == rhs); }
 
-constexpr std::ostream& operator<<(std::ostream& stream, const Rank& rank)
+inline std::ostream& operator<<(std::ostream& stream, const Rank& rank)
 {
     return stream << "Rank(" << static_cast<int>(rank.index + 1) << ")";
 }
 
-constexpr std::ostream& operator<<(std::ostream& stream, const File& file)
+inline std::ostream& operator<<(std::ostream& stream, const File& file)
 {
     return stream << "File(" << static_cast<char>('A' + (7 - file.index)) << ")";
 }

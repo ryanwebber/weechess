@@ -3,7 +3,7 @@
 
 #include "log.h"
 
-namespace log {
+namespace logger {
 void init_logging()
 {
     auto shared_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(WEECHESS_LOG_FILE);

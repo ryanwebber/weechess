@@ -103,7 +103,7 @@ Board Board::Builder::build() const
 {
     Board::Buffer piece_buffer {};
 
-    for (auto i = 0; i < m_pieces.size(); i++) {
+    for (size_t i = 0; i < m_pieces.size(); i++) {
         Location location(i);
         Piece piece = m_pieces[i];
         piece_buffer.occupancy_for(piece).set(location);

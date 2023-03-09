@@ -259,10 +259,10 @@ AppController::ViewState::ViewState() { focus = Focus::ChessWindow; }
 ftxui::Component AppController::ViewState::component_in_focus() const
 {
     switch (focus) {
-    case Focus::ChessWindow:
-        return nullptr;
     case Focus::CommandWindow:
         return command_input.renderer();
+    default:
+        return nullptr;
     }
 }
 
@@ -292,7 +292,7 @@ ftxui::Element AppController::render()
     BoardPrinter::Buffer<BoardDecoration> decorations = {};
 
     // Place the pieces on the board
-    for (auto i = 0; i < weechess::Board::cell_count; i++) {
+    for (size_t i = 0; i < weechess::Board::cell_count; i++) {
         weechess::Location draw_location(i);
         auto piece = oriented_piece_at(draw_location, k_orientation, m_state.game_state.board());
         if (piece.exists()) {
@@ -331,9 +331,9 @@ ftxui::Element AppController::render()
     }
 
     std::vector<Element> board_rows;
-    for (auto r = 0; r < bp.rows(); r++) {
+    for (size_t r = 0; r < bp.rows(); r++) {
         std::vector<Element> row_cells;
-        for (auto c = 0; c < bp.cols(); c++) {
+        for (size_t c = 0; c < bp.cols(); c++) {
             auto cell = bp.cell_at(r, c);
             auto elem = text(to_string(*cell));
 

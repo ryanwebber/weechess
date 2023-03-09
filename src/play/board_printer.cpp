@@ -59,7 +59,7 @@ void BoardPrinter::Cell::paint_border(Border border)
         break;
     }
     case Border::Detached: {
-        for (auto i = 0; i < BoardPrinter::Cell::offsets.size(); i++)
+        for (size_t i = 0; i < BoardPrinter::Cell::offsets.size(); i++)
             if (BoardPrinter::Cell::offsets[i] != 0)
                 m_printer.m_data[m_offset + BoardPrinter::Cell::offsets[i]] = cell_template[i];
         break;

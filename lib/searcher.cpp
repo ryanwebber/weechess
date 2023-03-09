@@ -136,7 +136,7 @@ private:
             std::next(legal_moves.begin(), move_set.legal_moves().size()),
             MoveSorter::default_instance);
 
-        for (auto i = 0; i < move_set.legal_moves().size(); i++) {
+        for (size_t i = 0; i < move_set.legal_moves().size(); i++) {
             const auto& legal_move = legal_moves[i];
             assert(legal_move.move() != Move::null);
 
@@ -149,11 +149,11 @@ private:
             if (evaluation >= beta) {
                 m_transposition_table.insert(game_state.snapshot(),
                     {
+                        .type = TranspositionEntry::Type::LowerBound,
+                        .move = legal_move.move(),
                         .depth = depth,
                         .max_depth = max_depth,
                         .evaluation = beta,
-                        .move = legal_move.move(),
-                        .type = TranspositionEntry::Type::LowerBound,
                     });
 
                 return beta;
@@ -168,11 +168,11 @@ private:
 
         m_transposition_table.insert(game_state.snapshot(),
             {
+                .type = evaluation_type,
+                .move = best_move.value_or(move_set.legal_moves().front().move()),
                 .depth = depth,
                 .max_depth = max_depth,
                 .evaluation = alpha,
-                .move = best_move.value_or(move_set.legal_moves().front().move()),
-                .type = evaluation_type,
             });
 
         if (m_nodes_searched > m_next_control_event) {

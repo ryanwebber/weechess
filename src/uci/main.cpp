@@ -224,7 +224,7 @@ const std::vector<UCICommand> commands = {
                 if (auto new_gs = weechess::GameState::from_fen(fen)) {
                     uci.game_state = *new_gs;
                 } else {
-                    log::error("Invalid fen string: {}", fen);
+                    logger::error("Invalid fen string: {}", fen);
                     return;
                 }
             } else {
@@ -244,14 +244,14 @@ const std::vector<UCICommand> commands = {
                     if (auto legal_move = uci.game_state.move_set().find_first(*move_query)) {
                         uci.game_state = weechess::GameState(legal_move->snapshot());
                     } else {
-                        log::error("Illegal move: {}", token);
+                        logger::error("Illegal move: {}", token);
                     }
                 } else {
-                    log::error("Invalid move format: {}", token);
+                    logger::error("Invalid move format: {}", token);
                 }
             }
 
-            log::debug("Position set to: {}", uci.game_state.to_fen());
+            logger::debug("Position set to: {}", uci.game_state.to_fen());
         } },
     UCICommand { "go",
         [](UCI& uci, std::istream& in, std::ostream& out) {
@@ -331,13 +331,13 @@ void UCI::loop(std::istream& in, std::ostream& out)
             continue;
         }
 
-        log::error("Unsupported command: {}", token);
+        logger::error("Unsupported command: {}", token);
     }
 }
 
 int main(int argc, char* argv[])
 {
-    log::init_logging();
+    logger::init_logging();
     argparse::ArgumentParser parser("weechess " UCI_CMD_NAME, UCI_CMD_VERSION, argparse::default_arguments::none);
     parser.add_description(UCI_CMD_DESCRIPTION);
     parser.add_argument("--help").default_value(false).implicit_value(true);
