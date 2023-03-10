@@ -428,7 +428,20 @@ ftxui::Element AppController::render()
             }),
             filler() | size(WIDTH, EQUAL, 2),
             window(text("History") | hcenter, table.Render() | size(WIDTH, EQUAL, 23)),
-            window(text("Logs") | hcenter, text("")) | flex,
+            window(text("Clock") | hcenter, hbox({
+                vbox({
+                    filler(),
+                    text("White") | dim | center,
+                    text("05:00") | bold | center,
+                    filler(),
+                }) | flex,
+                vbox({
+                    filler(),
+                    text("Black") | dim | center,
+                    text("05:00") | bold | center,
+                    filler(),
+                }) | flex,
+            })) | flex,
         }),
         vbox({
             vbox({ command_history }) | focusPositionRelative(0, 1) | yframe | flex,
