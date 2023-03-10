@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -35,6 +36,21 @@ struct Location {
 
     constexpr uint8_t file() const { return offset % 8; }
     constexpr uint8_t rank() const { return offset / 8; }
+
+    constexpr size_t manhatthan_distance_to(const Location& other) const
+    {
+        return std::abs(this->file() - other.file()) + std::abs(this->rank() - other.rank());
+    }
+
+    constexpr int distance_to_nearest_rank_edge() const
+    {
+        return std::min(static_cast<int>(this->file()), 7 - this->file());
+    }
+
+    constexpr int distance_to_nearest_file_edge() const
+    {
+        return std::min(static_cast<int>(this->rank()), 7 - this->rank());
+    }
 
     std::string to_string() const;
 
